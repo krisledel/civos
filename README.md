@@ -83,35 +83,26 @@ CivOS concepts could potentially be applied in multiple domains:
 
 Tools for bridging scientific climate models with local knowledge systems, creating more robust and contextually relevant adaptation strategies.
 
-[Read the speculative design →](examples/areas/climate-knowledge-integration.md)
-
 ### Media Verification
 
 Decentralized verification infrastructures for tracking content provenance and contextualizing information in an age of synthetic media.
-
-[Read the speculative design →](examples/areas/media-verification.md)
 
 ### Participatory Governance
 
 Systems for transparent, multi-perspective policy development with traceable connections between stakeholder input and outcomes.
 
-[Read the speculative design →](examples/areas/participatory-governance.md)
-
 ## Contributing
 
 This is a speculative project, and we welcome contributions that expand the conceptual framework, propose new design ideas, or develop theoretical foundations. You don't need to be a developer to participate.
 
-See our [Contributing Guide](community/CONTRIBUTING.md) for more information.
-
 ## Documentation
 
-- [Philosophical Foundations](docs/philosophical-basis.md)
-- [Conceptual Architecture](docs/technical-overview.md)
-- [Hypothetical Implementation](docs/implementation-guide.md)
+- [Philosophical Foundations](philosophical-basis.md)
+- [Conceptual Architecture](technical-overview.md)
 
 ## License
 
-CivOS is released under the [CC-BY-SA 4.0](LICENSE) license for documentation and concepts, and the [MIT License](LICENSE-CODE) for speculative code examples.
+CivOS is released under the CC-BY-SA 4.0 license for documentation and concepts, and the MIT License for speculative code examples.
 
 ---
 
