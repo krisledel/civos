@@ -4,6 +4,8 @@ Kris Ledel
 
 Arbetsyta för observationer, perspektiv, granskning, beslut, uppföljning och förändring av arbetsregler.
 
+Gränssnittet har dokumentträd, snabböppning med Ctrl+K, en beständig läspanel med bakåtlänkar och en klickbar sambandsgraf. Grafen visar högst 80 dokument åt gången och kan avgränsas till ett ärende eller en sökning.
+
 ## Lokal start
 
 Node.js 22.13 eller senare.

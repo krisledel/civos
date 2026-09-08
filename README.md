@@ -6,6 +6,8 @@ CivOS är en arbetsyta för att undersöka frågor, jämföra perspektiv, gransk
 
 En organisation kan exempelvis registrera observationer från två grupper, beskriva vad gruppernas begrepp betyder, behålla deras skilda bedömningar, välja ett handlingsalternativ och mäta utfallet. Om underlaget eller reglerna behöver ändras sparas en ny version. Äldre beslut behåller hänvisningarna till det underlag som användes då.
 
+Gränssnittet har dokumentträd, snabböppning med Ctrl+K, en beständig läspanel med bakåtlänkar och en klickbar sambandsgraf. Grafen visar högst 80 dokument åt gången och kan avgränsas till ett ärende eller en sökning.
+
 ## Börja här
 
 Använd webbversionen i `web/` för det fullständiga arbetsflödet. Den har kontobaserad åtkomst, arbetsytor, formulär, bilagor, granskning, beslutsvillkor, uppföljning och signerat datautbyte.

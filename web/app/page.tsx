@@ -18,6 +18,11 @@ import {
   RefreshCw,
   Search,
   History,
+  FileText,
+  FolderOpen,
+  ArrowLeft,
+  X,
+  Library,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -59,9 +64,12 @@ import {
   type Snapshot,
   dependencyHint,
 } from '@/components/civos/forms';
+import { RecordGraph } from '@/components/civos/graph';
+import { QuickSwitcher } from '@/components/civos/quick-switcher';
 import type { Space } from '@/lib/store';
 const layers = [
-  { id: 'overview', name: 'Översikt', icon: Workflow },
+  { id: 'overview', name: 'Arbetsyta', icon: Workflow },
+  { id: 'graph', name: 'Sambandsgraf', icon: Network },
   { id: 'observe', name: 'Observationer', icon: Eye },
   { id: 'frames', name: 'Perspektiv', icon: Network },
   { id: 'trust', name: 'Granskning', icon: ShieldCheck },
@@ -93,12 +101,31 @@ export default function Home() {
       null,
     ),
     [detail, setDetail] = useState<Entry | null>(null),
+    [documentHistory, setDocumentHistory] = useState<Entry[]>([]),
+    [graphFocus, setGraphFocus] = useState<string | undefined>(),
     [spaceDialog, setSpaceDialog] = useState(false),
     [invite, setInvite] = useState(''),
     [inviteRole, setInviteRole] = useState('reviewer'),
     [joinToken, setJoin] = useState(''),
     [trustDialog, setTrustDialog] = useState(false),
     [notice, setNotice] = useState('');
+  const openDocument = (entry: Entry | null) => {
+    if (entry) setGraphFocus(entry.id);
+    if (entry && detail && entry.id !== detail.id)
+      setDocumentHistory((h) => [...h, detail].slice(-30));
+    if (!entry) setDocumentHistory([]);
+    setDetail(entry);
+  };
+  const previousDocument = () => {
+    const last = documentHistory.at(-1);
+    if (last) {
+      setDetail(last);
+      setDocumentHistory((h) => h.slice(0, -1));
+    }
+  };
+  useEffect(() => {
+    if (detail) document.getElementById('document-title')?.focus();
+  }, [detail]);
   const refreshSpaces = useCallback(async (chosen?: string) => {
     const r = await fetch('/api/civos');
     if (r.status === 401) {
@@ -144,6 +171,8 @@ export default function Home() {
     let live = true;
     setSnap(null);
     setCase('all');
+    setDetail(null);
+    setDocumentHistory([]);
     fetch('/api/civos?space=' + encodeURIComponent(sid))
       .then(async (r) => {
         const d = (await r.json()) as Snapshot & {
@@ -196,6 +225,10 @@ export default function Home() {
     ),
     title = layers.find((l) => l.id === layer)!.name;
   const navigate = (id: string) => {
+    if (window.innerWidth <= 1000) {
+      setDetail(null);
+      setDocumentHistory([]);
+    }
     setLayer(id);
     setSearch('');
     setKind(
@@ -255,18 +288,56 @@ export default function Home() {
     );
   };
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      className={'obsidian-shell' + (detail ? ' has-document' : '')}
+    >
+      <nav className="icon-rail" aria-label="Snabbnavigering">
+        <div className="rail-mark">
+          <Layers3 />
+        </div>
+        <button
+          aria-label="Arbetsyta"
+          onClick={() => navigate('overview')}
+          className={layer === 'overview' ? 'active' : ''}
+        >
+          <Library />
+        </button>
+        <button
+          aria-label="Sambandsgraf"
+          onClick={() => navigate('graph')}
+          className={layer === 'graph' ? 'active' : ''}
+        >
+          <Network />
+        </button>
+        <button aria-label="Samordning" onClick={() => navigate('coordinate')}>
+          <Settings2 />
+        </button>
+        <span className="rail-bottom">KL</span>
+      </nav>
       <Sidebar className="civos-sidebar">
         <SidebarHeader>
           <div className="brand">
             <Layers3 />
             <strong>CivOS</strong>
           </div>
-          <span className="small-label">GEMENSAM ARBETSYTA</span>
+          <span className="small-label">KUNSKAP · PERSPEKTIV · HANDLING</span>
+          {spaces.length > 0 && (
+            <Picker
+              value={sid}
+              change={setSid}
+              options={spaces.map((s) => ({ id: s.id, label: s.title }))}
+              label="Välj arbetsyta"
+            />
+          )}
+          <QuickSwitcher
+            entries={current}
+            onOpen={openDocument}
+            onGraph={() => navigate('graph')}
+          />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>ARBETETS LAGER</SidebarGroupLabel>
+            <SidebarGroupLabel>VYER</SidebarGroupLabel>
             <SidebarMenu>
               {layers.map((x, i) => (
                 <SidebarMenuItem key={x.id}>
@@ -284,6 +355,47 @@ export default function Home() {
               ))}
             </SidebarMenu>
           </SidebarGroup>
+          <SidebarGroup className="document-tree">
+            <SidebarGroupLabel>
+              DOKUMENT <span>{current.length}</span>
+            </SidebarGroupLabel>
+            {cases.map((c) => (
+              <details key={c.id} open={caseId === c.id || cases.length === 1}>
+                <summary>
+                  <FolderOpen size={14} />
+                  <span>{String(c.data.title)}</span>
+                  <button
+                    aria-label={'Visa ärendet ' + c.data.title}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCase(c.id);
+                      openDocument(c);
+                    }}
+                  >
+                    ↗
+                  </button>
+                </summary>
+                {current
+                  .filter((e) => e.caseId === c.id)
+                  .map((e) => (
+                    <button
+                      key={e.id}
+                      className={detail?.id === e.id ? 'active' : ''}
+                      onClick={() => {
+                        setCase(c.id);
+                        openDocument(e);
+                      }}
+                    >
+                      <FileText size={13} />
+                      <span>{String(e.data.title)}</span>
+                    </button>
+                  ))}
+              </details>
+            ))}
+            {!cases.length && (
+              <p>Ärenden och dokument visas här när du börjar arbeta.</p>
+            )}
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           <div className="owner-avatar">KL</div>
@@ -294,7 +406,14 @@ export default function Home() {
       <SidebarInset>
         <header className="workspace-top">
           <SidebarTrigger />
-          <span>CivOS / {title}</span>
+          <div className="workspace-tab">
+            <FileText size={14} />
+            <span>{title}</span>
+          </div>
+          <button className="tab-graph" onClick={() => navigate('graph')}>
+            <Network size={14} />
+            Grafvy
+          </button>
           <span className="system-status">
             <i />
             {snap ? 'Arbetsyta ansluten' : 'Arbetsyta'}
@@ -303,7 +422,9 @@ export default function Home() {
         <main className="workspace-main">
           <div className="section-title">
             <div>
-              <span className="small-label">FRÅN KUNSKAP TILL HANDLING</span>
+              <span className="small-label">
+                {snap?.space.title || 'CivOS'} / {title}
+              </span>
               <h1>{title}</h1>
               <p>
                 {snap?.space.purpose ||
@@ -423,7 +544,16 @@ export default function Home() {
                       </Button>
                     </div>
                   )}
-                  {layer === 'overview' ? (
+                  {layer === 'graph' ? (
+                    <RecordGraph
+                      entries={entries.filter(
+                        (e) =>
+                          caseId === 'all' || !e.caseId || e.caseId === caseId,
+                      )}
+                      selected={detail?.id || graphFocus}
+                      onOpen={openDocument}
+                    />
+                  ) : layer === 'overview' ? (
                     <>
                       <div className="metric-grid">
                         {[
@@ -477,7 +607,7 @@ export default function Home() {
                                 className="case-card"
                                 onClick={() => {
                                   setCase(e.id);
-                                  setDetail(e);
+                                  openDocument(e);
                                 }}
                               >
                                 <span className="small-label">
@@ -535,7 +665,7 @@ export default function Home() {
                                 <button
                                   key={i}
                                   onClick={() =>
-                                    setDetail(byId.get(f.ids[0]) || null)
+                                    openDocument(byId.get(f.ids[0]) || null)
                                   }
                                 >
                                   <span className="attention">●</span>
@@ -569,7 +699,7 @@ export default function Home() {
                                 <button
                                   key={e.id}
                                   aria-label={String(e.data.title)}
-                                  onClick={() => setDetail(e)}
+                                  onClick={() => openDocument(e)}
                                 >
                                   <span className="event-dot" />
                                   <span>
@@ -633,7 +763,7 @@ export default function Home() {
                               <button
                                 className="record-row"
                                 key={e.id}
-                                onClick={() => setDetail(e)}
+                                onClick={() => openDocument(e)}
                               >
                                 <span className="record-number">
                                   {String(e.seq).padStart(3, '0')}
@@ -689,7 +819,7 @@ export default function Home() {
                                       <td>
                                         <button
                                           className="text-button"
-                                          onClick={() => setDetail(o)}
+                                          onClick={() => openDocument(o)}
                                         >
                                           {String(o.data.title)}
                                         </button>
@@ -708,7 +838,7 @@ export default function Home() {
                                             <button
                                               key={a.id}
                                               className="reference"
-                                              onClick={() => setDetail(a)}
+                                              onClick={() => openDocument(a)}
                                             >
                                               {String(a.data.position)}:{' '}
                                               {String(a.data.title)}
@@ -732,7 +862,7 @@ export default function Home() {
                                 <button
                                   key={e.id}
                                   className="mapping-row"
-                                  onClick={() => setDetail(e)}
+                                  onClick={() => openDocument(e)}
                                 >
                                   <span>
                                     {String(
@@ -763,7 +893,7 @@ export default function Home() {
                                 <div className="outcome-row" key={o.id}>
                                   <button
                                     className="text-button"
-                                    onClick={() => setDetail(o)}
+                                    onClick={() => openDocument(o)}
                                   >
                                     {String(o.data.title)}
                                   </button>
@@ -1134,137 +1264,180 @@ export default function Home() {
           }}
         />
       )}
-      <Dialog
-        open={!!detail}
-        onOpenChange={(o) => {
-          if (!o) setDetail(null);
-        }}
-      >
-        <DialogContent className="wide-dialog">
-          <DialogHeader>
-            <DialogTitle>{String(detail?.data.title || 'Post')}</DialogTitle>
-            <DialogDescription>
-              {detail &&
-                `${kinds[detail.kind].label} · ${date(detail.createdAt)} · registrerad av ${detail.actorName}`}
-            </DialogDescription>
-          </DialogHeader>
-          {detail && (
-            <>
-              <dl className="detail-fields">
-                {kinds[detail.kind].fields
-                  .filter(
-                    (f) =>
-                      f.key !== 'title' &&
-                      detail.data[f.key] !== undefined &&
-                      detail.data[f.key] !== '',
-                  )
-                  .map((f) => (
-                    <div key={f.key}>
-                      <dt>{f.label}</dt>
-                      <dd>
-                        {f.type === 'ref' || f.type === 'refs' ? (
-                          (Array.isArray(detail.data[f.key])
-                            ? (detail.data[f.key] as string[])
-                            : [String(detail.data[f.key])]
-                          ).map((id) => (
-                            <button
-                              className="reference"
-                              key={id}
-                              onClick={() => setDetail(byId.get(id) || null)}
+      {detail && (
+        <aside className="document-pane" aria-label="Öppet dokument">
+          <div className="document-toolbar">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Föregående dokument"
+              disabled={!documentHistory.length}
+              onClick={previousDocument}
+            >
+              <ArrowLeft size={16} />
+            </Button>
+            <span>
+              <FileText size={13} />
+              {kinds[detail.kind].label}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('graph')}
+              aria-label="Visa dokumentets samband"
+            >
+              <Network size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Stäng dokument"
+              onClick={() => openDocument(null)}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+          <div className="document-content">
+            <div className="document-breadcrumb">
+              {detail.caseId
+                ? String(byId.get(detail.caseId)?.data.title)
+                : snap?.space.title}{' '}
+              / {kinds[detail.kind].label}
+            </div>
+            <h2 id="document-title" tabIndex={-1}>
+              {String(detail.data.title)}
+            </h2>
+            <div className="document-state">
+              <span>
+                {entries.some((e) => e.supersedes === detail.id)
+                  ? 'Äldre version'
+                  : 'Aktuell version'}
+              </span>
+              <span>#{String(detail.seq).padStart(3, '0')}</span>
+            </div>
+            <p className="document-meta">
+              {date(detail.createdAt)} · {detail.actorName}
+            </p>
+            {detail && (
+              <>
+                <dl className="detail-fields">
+                  {kinds[detail.kind].fields
+                    .filter(
+                      (f) =>
+                        f.key !== 'title' &&
+                        detail.data[f.key] !== undefined &&
+                        detail.data[f.key] !== '',
+                    )
+                    .map((f) => (
+                      <div key={f.key}>
+                        <dt>{f.label}</dt>
+                        <dd>
+                          {f.type === 'ref' || f.type === 'refs' ? (
+                            (Array.isArray(detail.data[f.key])
+                              ? (detail.data[f.key] as string[])
+                              : [String(detail.data[f.key])]
+                            ).map((id) => (
+                              <button
+                                className="reference"
+                                key={id}
+                                onClick={() =>
+                                  openDocument(byId.get(id) || null)
+                                }
+                              >
+                                {String(byId.get(id)?.data.title || id)}
+                              </button>
+                            ))
+                          ) : f.type === 'date' ? (
+                            date(String(detail.data[f.key]))
+                          ) : Array.isArray(detail.data[f.key]) ? (
+                            (detail.data[f.key] as string[]).join(', ')
+                          ) : f.key === 'uri' &&
+                            /^https?:/.test(String(detail.data[f.key])) ? (
+                            <a
+                              href={String(detail.data[f.key])}
+                              target="_blank"
+                              rel="noreferrer"
                             >
-                              {String(byId.get(id)?.data.title || id)}
-                            </button>
-                          ))
-                        ) : f.type === 'date' ? (
-                          date(String(detail.data[f.key]))
-                        ) : Array.isArray(detail.data[f.key]) ? (
-                          (detail.data[f.key] as string[]).join(', ')
-                        ) : f.key === 'uri' &&
-                          /^https?:/.test(String(detail.data[f.key])) ? (
-                          <a
-                            href={String(detail.data[f.key])}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {String(detail.data[f.key])}
-                          </a>
-                        ) : (
-                          String(detail.data[f.key])
-                        )}
-                      </dd>
-                    </div>
-                  ))}
-              </dl>
-              {detail.kind === 'source' && detail.data.artifactId && (
-                <a
-                  href={
-                    '/api/civos?space=' +
-                    sid +
-                    '&attachment=' +
-                    detail.data.artifactId
-                  }
-                >
-                  Ladda ner bilaga
-                </a>
-              )}
-              <div className="detail-history">
-                <h3>
-                  <History size={17} /> Historik och samband
-                </h3>
-                <p>
-                  Registrerande konto: <code>{detail.actor}</code>
-                </p>
-                {detail.supersedes && (
-                  <button
-                    className="reference"
-                    onClick={() =>
-                      setDetail(byId.get(detail.supersedes!) || null)
+                              {String(detail.data[f.key])}
+                            </a>
+                          ) : (
+                            String(detail.data[f.key])
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
+                {detail.kind === 'source' && detail.data.artifactId && (
+                  <a
+                    href={
+                      '/api/civos?space=' +
+                      sid +
+                      '&attachment=' +
+                      detail.data.artifactId
                     }
                   >
-                    Visa föregående version
-                  </button>
+                    Ladda ner bilaga
+                  </a>
                 )}
-                {entries
-                  .filter((e) => e.supersedes === detail.id)
-                  .map((e) => (
+                <div className="detail-history">
+                  <h3>
+                    <History size={17} /> Bakåtlänkar och historik
+                  </h3>
+                  <p>
+                    Registrerande konto: <code>{detail.actor}</code>
+                  </p>
+                  {detail.supersedes && (
                     <button
-                      key={e.id}
                       className="reference"
-                      onClick={() => setDetail(e)}
+                      onClick={() =>
+                        openDocument(byId.get(detail.supersedes!) || null)
+                      }
                     >
-                      Visa nyare version · {date(e.createdAt)}
+                      Visa föregående version
                     </button>
-                  ))}
-                <p>Poster som hänvisar hit:</p>
-                {current
-                  .filter((e) => references(e).includes(detail.id))
-                  .map((e) => (
-                    <button
-                      key={e.id}
-                      className="reference"
-                      onClick={() => setDetail(e)}
+                  )}
+                  {entries
+                    .filter((e) => e.supersedes === detail.id)
+                    .map((e) => (
+                      <button
+                        key={e.id}
+                        className="reference"
+                        onClick={() => openDocument(e)}
+                      >
+                        Visa nyare version · {date(e.createdAt)}
+                      </button>
+                    ))}
+                  <p>Poster som hänvisar hit:</p>
+                  {current
+                    .filter((e) => references(e).includes(detail.id))
+                    .map((e) => (
+                      <button
+                        key={e.id}
+                        className="reference"
+                        onClick={() => openDocument(e)}
+                      >
+                        {kinds[e.kind].label}: {String(e.data.title)}
+                      </button>
+                    ))}
+                  <code className="hash">{detail.hash}</code>
+                </div>
+                {!['case', 'policy', 'rule_resolution'].includes(detail.kind) &&
+                  canKind(detail.kind) &&
+                  !entries.some((e) => e.supersedes === detail.id) && (
+                    <Button
+                      onClick={() => {
+                        setEditor({ kind: detail.kind, entry: detail });
+                        openDocument(null);
+                      }}
                     >
-                      {kinds[e.kind].label}: {String(e.data.title)}
-                    </button>
-                  ))}
-                <code className="hash">{detail.hash}</code>
-              </div>
-              {!['case', 'policy', 'rule_resolution'].includes(detail.kind) &&
-                canKind(detail.kind) &&
-                !entries.some((e) => e.supersedes === detail.id) && (
-                  <Button
-                    onClick={() => {
-                      setEditor({ kind: detail.kind, entry: detail });
-                      setDetail(null);
-                    }}
-                  >
-                    Revidera posten
-                  </Button>
-                )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                      Skriv en ny version
+                    </Button>
+                  )}
+              </>
+            )}
+          </div>
+        </aside>
+      )}
       <Dialog open={trustDialog} onOpenChange={setTrustDialog}>
         <DialogContent>
           <DialogHeader>
