@@ -1,0 +1,203 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Kris Ledel"><title>Computational models in CivOS</title><style>body{max-width:880px;margin:0 auto;padding:50px 28px;background:#fafbf9;color:#1c2a3a;font:18px/1.75 Georgia,serif}header{font:14px Arial;border-bottom:1px solid #cfd8e3;padding-bottom:20px;margin-bottom:40px;display:flex;justify-content:space-between}h1,h2,h3{font-family:Arial;line-height:1.25;letter-spacing:-.5px}h1{font-size:40px}h2{font-size:25px;margin-top:48px}a{color:#1f59bd}pre{background:#17283e;color:#f4f7fc;overflow-x:auto;padding:22px;border-radius:6px;font:14px/1.7 Consolas,monospace}code{font-size:.86em}table{border-collapse:collapse;width:100%;font:14px/1.6 Arial}td,th{border:1px solid #cad6e6;padding:12px;text-align:left}th{background:#e9eff7}blockquote{border-left:3px solid #5484c7;padding:5px 22px;margin:25px 0;color:#49617e}footer{margin-top:60px;border-top:1px solid #cad6e6;padding-top:20px;font:13px Arial;color:#627589}@media(max-width:600px){body{padding:28px 18px}h1{font-size:30px}table{display:block;overflow-x:auto}}</style></head><body><header><strong>CivOS / Kris Ledel</strong><a href="/">Workspace</a></header><main><h1 id="computational-models-in-civos">Computational models in CivOS</h1>
+<p><strong>Kris Ledel · CivOS</strong></p>
+<p>Computational models connect registered options and perspectives to explicit equations, uncertain inputs, and hard constraints. The workbench calculates where preferences differ, where a constraint fails, and which conclusions hold throughout the stated input bounds. A saved analysis connects those calculations to the evidence and model versions used in a decision.</p>
+<p>The current kernel is <code>civos.affine.v1</code>. It evaluates declared models. It does not discover physical laws, judge whether a source is true, establish a participant's authority, or infer that an action caused an outcome.</p>
+<h2 id="1-define-the-model">1. Define the model</h2>
+<p>Select a case, register at least two options and one perspective, and open <strong>Models</strong>. Choose <strong>New model</strong>. The model editor uses the options and perspectives already registered in that case; their identifiers and titles remain linked to those records.</p>
+<p>Give the model a name and describe its scope, assumptions, and limitations. Add supporting sources where available. For each input, enter:</p>
+<ul>
+<li>A short name used in equations, such as <code>price</code>.</li>
+<li>A display label and declared unit.</li>
+<li>A category: <strong>Evidence / measurement</strong>, <strong>Assumption / interpretation</strong>, or <strong>Value judgement</strong>.</li>
+<li>A lower bound, reference value, and upper bound, with <code>low ≤ reference ≤ high</code>.</li>
+</ul>
+<p>The category is the author's declaration. Selecting Evidence does not verify a fact, and selecting Value judgement does not establish that a preference is shared. Units are descriptive labels; the kernel does not perform dimensional analysis or automatic conversion. Include necessary conversion factors explicitly in the equations.</p>
+<p>Each perspective supplies one score expression for every option. Higher scores are preferred within that perspective. The application keeps perspective scales separate: a score of 60 in one perspective is not compared with a score of 60 in another, and the scores are not averaged into a common ranking.</p>
+<p>Add hard constraints to the relevant option rules. A constraint contains a label, an expression, a comparison (<code>≤</code> or <code>≥</code>), and a numeric limit. Constraints belong to a perspective's rule. If a condition must apply in every perspective, include it in each relevant rule. Meeting a score target does not override a failed constraint.</p>
+<h3 id="supported-expressions-and-limits">Supported expressions and limits</h3>
+<p>Expressions are affine: a constant plus a sum of inputs multiplied by constants. Examples include <code>80 - 8 * price</code>, <code>3 * (x + y) / 2</code>, and <code>45</code>. Parentheses, decimal or scientific-notation numbers, addition, subtraction, multiplication by a constant, and division by a nonzero constant are supported.</p>
+<p>Products of two variable-dependent expressions, variable denominators, powers, conditional branches, and functions such as logarithms are not supported. <code>price * stress</code> and <code>1 / price</code> are rejected. The parser does not execute JavaScript.</p>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Current implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inputs</td>
+<td>1–8</td>
+</tr>
+<tr>
+<td>Options</td>
+<td>2–6</td>
+</tr>
+<tr>
+<td>Perspectives</td>
+<td>1–4</td>
+</tr>
+<tr>
+<td>Constraints</td>
+<td>Up to 4 per option, per perspective</td>
+</tr>
+<tr>
+<td>Expression length</td>
+<td>Up to 300 characters</td>
+</tr>
+<tr>
+<td>Model definition</td>
+<td>Up to 24,000 characters</td>
+</tr>
+<tr>
+<td>Numeric inputs, limits, and supported coefficients</td>
+<td>Absolute value at most <code>10^12</code></td>
+</tr>
+</tbody>
+</table>
+<p>Additional expression-complexity and exact-arithmetic limits reject calculations that exceed the supported size. Passing validation establishes that the model can be calculated within these limits, not that its equations are appropriate for the case.</p>
+<h2 id="2-read-reference-results-and-uncertainty-separately">2. Read reference results and uncertainty separately</h2>
+<p>The reference value is a scenario point inside an input's bounds. Moving a slider or entering another reference value changes the live comparison. It does not change a measurement, narrow an interval, or write a record to history.</p>
+<p>The full uncertainty set is the Cartesian product of all input intervals: every combination inside the box is allowed. The box supplies no probabilities, confidence levels, or statistical independence claim. It also does not encode correlations or other relationships restricting the combinations. If only some combinations are physically possible, the current box can include impossible combinations and therefore produce conservative conclusions.</p>
+<p>For an affine expression, the kernel calculates its minimum and maximum over that box. Comparisons use shared variables: if two options contain the same input term, the term can cancel in their difference. This preserves information that would be lost by subtracting independently calculated score ranges.</p>
+<table>
+<thead>
+<tr>
+<th>Display</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Preferred at reference values</td>
+<td>Highest score among options satisfying that perspective's constraints at the displayed reference point. All exact ties are retained.</td>
+</tr>
+<tr>
+<td>Constraints hold across bounds</td>
+<td>Every modeled constraint for that option and perspective holds throughout the box.</td>
+</tr>
+<tr>
+<td>Constraints hold here; uncertain across bounds</td>
+<td>The constraints hold at the reference point, but that conclusion is not established throughout the box.</td>
+</tr>
+<tr>
+<td>Constraint violated here</td>
+<td>At least one constraint fails at the reference point.</td>
+</tr>
+<tr>
+<td>A constraint fails across bounds</td>
+<td>One constraint fails everywhere in the box, so the option cannot satisfy it there.</td>
+</tr>
+<tr>
+<td>Guaranteed preferred</td>
+<td>The option is feasible throughout the box and the kernel certifies that its score is at least as high as each relevant competitor throughout the box.</td>
+</tr>
+<tr>
+<td>Feasible for every perspective · all bounds</td>
+<td>The option satisfies every perspective's modeled constraints throughout the box. This does not imply agreement about its desirability.</td>
+</tr>
+<tr>
+<td>Shared guaranteed preference</td>
+<td>Every perspective certifies the same option as at least tied for best throughout the box.</td>
+</tr>
+</tbody>
+</table>
+<p>Guaranteed preference is a conservative dominance certificate. It is not a maximin rule selecting the largest lower score bound. The implementation may compare an option against a competitor even in parts of the box where that competitor is not feasible. It also does not solve every possible joint constraint-feasibility problem. <strong>Not established</strong> means that this test did not prove the conclusion; it does not prove that no workable choice or agreement exists.</p>
+<p>The kernel uses rational arithmetic for comparisons, expression bounds, ties, and calculated boundaries. On-screen decimal values are rounded, generally to six significant digits. Exact fractions are available in the detailed interval, boundary, and explanation views; score tooltips also show exact values. Numeric form fields are stored as JavaScript numbers before conversion to rationals, so arbitrary extra digits typed into those fields are not preserved. Exact calculation refers to the represented inputs, not greater precision in the original evidence.</p>
+<h2 id="3-inspect-changes-and-measurement-opportunities">3. Inspect changes and measurement opportunities</h2>
+<p>Under <strong>Where the choice changes</strong>, choose an input to vary. This view holds all other inputs at their displayed reference values. It calculates score-tie and constraint boundaries, then shows the preferred options between those boundaries. Open <strong>Exact intervals and boundaries</strong> to distinguish an open interval from a tie or constraint boundary at an exact value.</p>
+<p><strong>What could a measurement resolve?</strong> asks a different question. Its certificates fix one evidence input to an exact value while retaining the other inputs' full uncertainty. A displayed range identifies values sufficient to certify a shared weak preference. Weak preference includes ties. Uncovered values remain unresolved by this conservative one-input test.</p>
+<p>The <strong>Why measure …?</strong> explanation identifies score comparisons or constraints affected by an evidence input. A reported percentage is the fraction of a score-difference interval's width that an exact measurement would remove. It is not a probability, expected benefit, or estimate of whether a measurement is worth its cost. Enter an actual measurement with error as an interval, then recalculate.</p>
+<p><strong>Explain the disagreement</strong> decomposes each score difference into its constant and input contributions. The input categories remain those declared by the model author. This calculation does not infer whether the real disagreement is factual, interpretive, ethical, or political.</p>
+<h2 id="4-work-through-the-synthetic-energy-example">4. Work through the synthetic energy example</h2>
+<p>Choose <strong>Open synthetic example</strong>. This creates a separate workspace containing an invented source, observation, three options, two perspectives, and the model <strong>Energy package comparison</strong>. Every number and operating limit is synthetic. The example makes no claim about real energy systems, prices, equipment, or measured benefits.</p>
+<p>The initial inputs are <code>price ∈ [2,5]</code> with reference <code>3</code>, and <code>stress ∈ [0,2]</code> with reference <code>1</code>. Both use the unit <code>synthetic index</code>. Price is declared an evidence input; stress is declared an assumption.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Cost perspective</th>
+<th>Continuity perspective</th>
+<th>Hard rule in both perspectives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flexible package</td>
+<td><code>80 - 8 * price</code></td>
+<td><code>45 - 2 * stress</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Balanced package</td>
+<td><code>45</code></td>
+<td><code>60 - 2 * stress</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Reserve package</td>
+<td><code>20 + 7 * price</code></td>
+<td><code>80 - 4 * stress</code></td>
+<td><code>stress ≤ 2.5</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="initial-comparison">Initial comparison</h3>
+<p>At the initial reference point, cost scores are <code>56</code>, <code>45</code>, and <code>41</code>. Continuity scores are <code>43</code>, <code>58</code>, and <code>76</code>. The Cost perspective prefers Flexible; the Continuity perspective prefers Reserve.</p>
+<table>
+<thead>
+<tr>
+<th>Perspective</th>
+<th>Flexible score range</th>
+<th>Balanced score range</th>
+<th>Reserve score range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cost</td>
+<td><code>[40,64]</code></td>
+<td><code>[45,45]</code></td>
+<td><code>[34,55]</code></td>
+</tr>
+<tr>
+<td>Continuity</td>
+<td><code>[41,45]</code></td>
+<td><code>[56,60]</code></td>
+<td><code>[72,80]</code></td>
+</tr>
+</tbody>
+</table>
+<p>All three packages satisfy the constraints across the initial bounds. Reserve is guaranteed preferred for continuity, but cost has no guaranteed preferred option across the full price range. Shared guaranteed preference is therefore <strong>Not established</strong>. Choose <strong>Save analysis</strong> to preserve this starting result.</p>
+<h3 id="find-the-exact-price-threshold">Find the exact price threshold</h3>
+<p>Select Price index under <strong>Where the choice changes</strong> and inspect the exact boundaries. The relevant difference is:</p>
+<pre><code class="language-text">Flexible cost - Reserve cost = 60 - 15 * price
+</code></pre>
+<p>The pointwise cost winner changes at <code>price = 4</code>. Flexible and Reserve tie there at <code>48</code>, above Balanced's <code>45</code>. Flexible wins below <code>4</code>; Reserve wins above it while its hard constraint holds.</p>
+<p>Set the price reference to <code>4.5</code>. Both perspectives now prefer Reserve at the reference point. Shared guaranteed preference remains unestablished because the price bounds are still <code>[2,5]</code>. The one-input measurement certificate identifies <code>4 ≤ price ≤ 5</code> as sufficient for a shared weak preference when all stress uncertainty is retained.</p>
+<h3 id="record-a-synthetic-measurement">Record a synthetic measurement</h3>
+<p>Under Price index, choose <strong>Record measurement +</strong>. Enter a clearly synthetic measurement name, lower bound <code>4.2</code>, reference value <code>4.5</code>, upper bound <code>4.8</code>, and the exact unit <code>synthetic index</code>. Select the example source, or register a separate source explicitly stating that the values are invented. Explain that no external measurement was made in <strong>Method and uncertainty</strong>.</p>
+<p>Use the new measurement in the evidence selector. If an earlier what-if reference falls outside the new interval, reset the reference values or choose a valid one. A single available measurement is selected automatically unless you explicitly choose the declared model bounds.</p>
+<p>The cost ranges become <code>[41.6,46.4]</code> for Flexible, <code>[45,45]</code> for Balanced, and <code>[49.4,53.6]</code> for Reserve. Reserve is now guaranteed preferred in both perspectives. Its exact cost advantage over Flexible is <code>[3,12]</code>. Continuity's Balanced-minus-Flexible difference is exactly <code>15</code> because the shared stress terms cancel.</p>
+<p>The first saved analysis remains unchanged and is flagged because new evidence arrived. Save a second analysis with the selected measurement. Inspect both versions through the record history and the saved-analysis links.</p>
+<h3 id="test-a-failed-hard-constraint">Test a failed hard constraint</h3>
+<p>Stress is an assumption in this model, so change it through <strong>Edit model</strong>. Set its lower bound to <code>3</code>, reference to <code>3.5</code>, and upper bound to <code>4</code>. Explain in the limitations that this new scenario contradicts the old <code>[0,2]</code> assumption. It is not a refinement of that interval. Save the new model version.</p>
+<p>Measurements belong to an exact model version. The earlier price measurement does not automatically transfer to the revised model. To reproduce this comparison, record the synthetic price interval <code>[4.2,4.8]</code>, reference <code>4.5</code>, for the new model version with its source and method recorded again.</p>
+<p>Reserve's constraint slack is now <code>[-1.5,-0.5]</code>: the rule fails throughout the stress interval. Its high raw scores remain inspectable, but it is excluded from the reference-point preference comparison. At the reference point, Balanced wins for both perspectives.</p>
+<p>Flexible and Balanced remain feasible throughout the box. Balanced is guaranteed preferred for continuity; cost still has no guaranteed winner over <code>[4.2,4.8]</code>. At price <code>4.2</code>, Flexible scores <code>46.4</code> against Balanced's <code>45</code>; their exact tie is <code>price = 35/8</code>, or <code>4.375</code>. Do not interpret the nominal agreement as a shared guarantee across all allowed prices.</p>
+<h2 id="5-save-an-analysis-and-attach-it-to-a-decision">5. Save an analysis and attach it to a decision</h2>
+<p>Live exploration does not write to history. <strong>Save analysis</strong> records the exact model identifier, selected measurement identifiers, scenario reference overrides, kernel version, history-prefix length and hash, and a reproducible result summary. The server recalculates that summary before accepting it. Saved analyses cannot be revised in place; save another analysis to record a new basis or scenario.</p>
+<p>In the decision form, select the analysis under <strong>Saved model analysis</strong>. The selected option must belong to that analysis. The usual requirements for a decision still apply, including a responsible participant, stated authority, review of the option's observation basis, the working rule, objections, target, and follow-up deadline. The synthetic workspace does not bypass those requirements.</p>
+<p>The application rejects an attached analysis whose tracked basis has changed or become blocked. It also rejects a selected option that violates any modeled hard constraint at the saved reference values. It does not require that the option be preferred, guarantee feasibility throughout every bound, or establish authority to act. The decision's rationale must address any uncertainty the organisation accepts.</p>
+<p>A local decision cannot attach an analysis retained from the imported portion of a branch; save a local analysis first. The model and its record history can be included in the workspace's signed export, but a valid calculation or signature does not certify the underlying facts.</p>
+<h2 id="6-handle-measurements-conflicts-and-revisions">6. Handle measurements, conflicts, and revisions</h2>
+<p>A measurement requires an evidence input, its exact declared unit, at least one source, a method and uncertainty description, and ordered lower, reference, and upper values. An analysis selects at most one measurement per input from its exact model version. A selected measurement replaces the declared interval for that calculation; the application does not automatically intersect it with the old bounds or establish compatibility with them.</p>
+<p>If several current measurements exist for the same input, the workbench requires an explicit evidence choice. It does not average them or choose the most recent one silently. You can also explicitly select <strong>Use declared model bounds</strong>. That choice is a calculation basis, not a resolution of the evidential disagreement.</p>
+<p>A measurement revision keeps its model version and input identifier. The old measurement stays in history. Model changes append a new version through <code>supersedes</code>, preserving the earlier definition and the analyses that used it.</p>
+<p><strong>Saved analyses and affected decisions</strong> and the coordination findings identify tracked changes:</p>
+<ul>
+<li>A new or revised measurement marks an analysis as changed. Where one unambiguous replacement can be used, the application recalculates and reports whether preference or feasibility changed.</li>
+<li>Conflicting replacement measurements, or a new interval excluding a saved scenario reference, block an automatic update until the evidence and scenario are chosen explicitly.</li>
+<li>Revisions to a linked model, option, perspective, or source block the existing analysis basis pending review of the exact versions.</li>
+</ul>
+<p>These checks concern recorded dependencies. They do not discover missing evidence, authenticate measurement methods, decide which conflicting source is correct, or rewrite an existing decision. Review the changed basis, save a new analysis, and record any resulting decision revision through the normal workflow.</p></main><footer>Kris Ledel · CivOS · September 2026</footer></body></html>

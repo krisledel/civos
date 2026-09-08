@@ -1,75 +1,57 @@
-# The Dark Mirror: Potential Risks of Epistemological Architectures
+# The dark mirror: CivOS threat model
 
-> *"Every tool that reshapes how we know, inevitably reshapes what we can become."*
+A system that records reasons can help people challenge a decision. The same system can lend an unjustified appearance of authority to whoever controls its inputs. This document defines the prototype's trust boundaries and the failures a pilot must look for.
 
-CivOS represents a vision for addressing the epistemic fractures in our information environments. But any system powerful enough to align knowledge and coordinate action across diverse perspectives is also powerful enough to create new forms of control, exclusion, and manipulation.
+## Assets and actors
 
-This document explicitly examines the shadow possibilities of the CivOS vision—not to abandon the project, but to proceed with eyes open to the risks. Building new epistemic infrastructure without considering its potential for harm would be irresponsible.
+Protect the integrity of the decision trail, the visibility of objections, the ability to interpret corrections, and the confidentiality of material that should never enter the ledger. Keep a usable copy of the records if the local machine fails.
 
-## Five Shadow Potentials
+Relevant actors include an honest participant who makes a mistake, a contributor who deliberately misleads, a reviewer with a conflict of interest, an operator who controls the database, and an institution that uses a record to defend its own decisions. Several roles may belong to one person. The prototype does not enforce separation of duties.
 
-### 1. Epistemic Colonialism in New Forms
+The application runs locally and trusts its operator and host. Names in records are assertions, not authenticated identities. There is no distributed consensus, network identity service, permission system, or cryptographic signature workflow.
 
-While CivOS aims to enable epistemic pluralism, there is a risk that dominant knowledge frameworks could be embedded in its architecture, creating a more sophisticated form of epistemic imperialism. Western scientific epistemology, with its particular assumptions about objectivity, quantification, and universality, could be unconsciously privileged in the system's design.
+## Failure scenarios
 
-**Dark Mirror Scenario:** A CivOS implementation becomes widely adopted for climate adaptation planning, but its ontological structures subtly force indigenous knowledge systems to conform to Western scientific categories to be "legible" in the system. Local knowledge that doesn't fit these structures is systematically marginalized, despite surface-level inclusion.
+| Threat | Concrete failure | Present boundary or response |
+| --- | --- | --- |
+| Fabricated evidence | A convincing source description refers to a nonexistent inspection | Structural validation cannot establish source existence; reviewers must inspect evidence |
+| Selective evidence | The operator records supporting material and omits a known objection | Require a human review of missing alternatives; a hash cannot reveal never-entered information |
+| Authority laundering | A person calls themselves an authorized decision-maker | The application records the claim; mandate must be checked outside it |
+| Identity impersonation | A record uses another participant's name | Actor labels provide attribution context, not proof of authorship |
+| Database rewrite | An operator changes old records and recomputes every hash | Compare against an independently retained checkpoint; internal verification alone is insufficient |
+| Truncation | Recent records disappear and the remaining prefix still verifies | Compare the current head and record count with a known external checkpoint |
+| Dissent burial | An objection remains in storage but is absent from the account people read | Inspect reports and require reviewers to locate material disagreement |
+| False causality | A later improvement is presented as proof the decision caused it | Separate observed outcome from causal assessment; record competing explanations |
+| Source decay | A referenced document changes or disappears | Preserve permitted source versions separately and record access limits |
+| Privacy exposure | A ledger or export contains identifying testimony | Use synthetic or appropriately minimized data; there is no selective erasure workflow |
+| Host compromise | Malware changes the application, database, and local checkpoint | Local verification cannot establish a trusted host; use independent copies and verification where needed |
+| Workload capture | Only people with time and technical fluency can participate | Measure recording burden and representation failures; offer a different process or stop |
 
-**Vigilance Required:** Continually examine how power dynamics shape which knowledge systems influence core architecture; ensure ontological bridges are bidirectional rather than assimilative; prioritize design participation from historically marginalized knowledge traditions.
+## What the hash chain proves
 
-### 2. Automated Trust Stratification
+Each record's digest depends on its serialized content and the previous record's digest. Verification can detect inconsistencies in the chain being checked. An independently retained earlier head lets a reviewer test whether the supplied history still matches that checkpoint.
 
-CivOS proposes distributed trust mechanisms to replace centralized epistemic authorities. However, these mechanisms could create new, less visible forms of epistemic stratification.
+The chain does not establish authorship, a trustworthy wall-clock time, factual truth, legal authority, or completeness. If someone replaces the entire history and there is no trusted earlier checkpoint, a self-consistent replacement can pass. A checkpoint kept beside the database is exposed to many of the same failures as the database itself.
 
-**Dark Mirror Scenario:** Trust algorithms implicitly encode historical patterns of citation and authority, causing knowledge from certain sources to systematically receive higher trust scores regardless of content quality. These patterns become self-reinforcing as higher-scored sources gain more visibility and validation, creating algorithmic redlining of epistemic landscapes.
+The application treats accepted records as immutable. A machine owner can bypass the application and alter a SQLite file. Describe this as an append-only application workflow with tamper evidence under stated conditions, not unalterable storage.
 
-**Vigilance Required:** Make trust mechanisms fully transparent and contestable; actively monitor for systemic bias in trust allocation; ensure mechanisms exist to challenge and revise trust assessments; design for contextual rather than universal trust metrics.
+## Institutional misuse
 
-### 3. Weaponized Coherence
+A mandatory record system could turn participation into surveillance or make dissent costly. A requirement for formal evidence could exclude people whose relevant knowledge is difficult to document. An institution could advertise procedural completeness while denying affected people any influence.
 
-CivOS aims to create adaptive coherence across different knowledge systems. However, coherence itself can become a weapon when used to delegitimize necessary dissent or flatten important distinctions.
+The pilot must make refusal possible, define who can challenge a record, and distinguish technical review from the authority to decide. Do not use a count of recorded objections as a proxy for freedom to object. Ask whether participants could object without retaliation, and report the limits of that assessment.
 
-**Dark Mirror Scenario:** A government implements CivOS-inspired tools for policy development but uses the system's emphasis on coherence to systematically marginalize minority perspectives as "incoherent" with the dominant narrative. What begins as a tool for coordination becomes a sophisticated mechanism for enforcing ideological conformity.
+No universal truth score, personal reputation ranking, automatic sanction, or automated real-world action belongs in this prototype. Adding one would change the threat model and require a separate justification and review.
 
-**Vigilance Required:** Distinguish between coherence and consensus; design mechanisms that preserve productive tension; ensure the system can represent and navigate genuine incommensurability; build in protections for minority perspectives.
+## Adversarial checks for a pilot
 
-### 4. Meta-Coordination Capture
+1. Present one well-formed false source and check whether human review catches it.
+2. Correct a material observation and ask an independent reader to reconstruct both the earlier and revised rationale.
+3. Record a serious objection, then check whether readers of the report notice and accurately describe it.
+4. Alter or truncate a disposable database copy and compare verification with and without an external checkpoint.
+5. Export and restore a synthetic ledger, then verify that the restored history matches the original checkpoint.
+6. Have participants identify information that should remain outside the system and verify that none enters the export.
 
-The meta-coordinative layer of CivOS is potentially its most powerful aspect—the system that reasons about coordination itself. This creates a significant risk of capture by those who would use this capability for control rather than liberation.
+These exercises are proposed checks, not results. Use disposable copies and synthetic data. Stop the pilot if it exposes protected information, prevents effective challenge, or makes decision responsibility less clear. Record the failure and change the workflow before trying again.
 
-**Dark Mirror Scenario:** A corporation implements an internal CivOS-like system for knowledge management, but the meta-coordination mechanisms become dominated by executives who subtly shape the system to reinforce existing power structures while appearing to democratize knowledge flows.
-
-**Vigilance Required:** Apply principles of polycentric governance to meta-coordination mechanisms; ensure no single entity controls critical coordination protocols; develop means for detecting and addressing coordination capture; maintain multiple independent implementations.
-
-### 5. Epistemic Surveillance Infrastructure
-
-The provenance tracking and contextual data mechanisms central to CivOS could, if implemented without careful privacy considerations, create unprecedented infrastructure for monitoring and controlling intellectual exploration.
-
-**Dark Mirror Scenario:** A state adopts CivOS principles for managing scientific information but exploits the provenance tracking to monitor which researchers access politically sensitive information or express doubts about official narratives. The system that was meant to increase knowledge verifiability becomes a tool for intellectual surveillance.
-
-**Vigilance Required:** Implement privacy-by-design principles; ensure selective disclosure is possible; separate identity from content where appropriate; make tracking mechanisms bilateral rather than unidirectional; prioritize consent in all information flows.
-
-## Beyond Techno-Solutionism
-
-Perhaps the greatest risk is that CivOS, despite its intentions, becomes another form of techno-solutionism—the belief that complex social problems can be solved primarily through technological means. The epistemic challenges we face have deep historical, cultural, and political roots that no technical architecture alone can address.
-
-**Dark Mirror Scenario:** CivOS gains adoption among technologists who implement sophisticated technical components while neglecting the social practices, cultural transformations, and power redistributions necessary for genuine epistemic repair. The result is beautiful architecture built on unchanged social foundations, replicating existing hierarchies in more sophisticated forms.
-
-**Vigilance Required:** Maintain that CivOS is equally about social practices as technical protocols; explicitly link technical development to social transformation; refuse implementations that technically succeed but socially fail; continuously ask who benefits and who is excluded.
-
-## A Commitment to Vigilance
-
-These shadow potentials do not negate the value of exploring new epistemic architectures. Rather, they demand that we proceed with:
-
-1. **Critical awareness** of how power shapes knowledge systems
-2. **Continuous examination** of our own assumptions and blind spots
-3. **Diverse participation** across disciplines, cultures, and positionalities
-4. **Adaptability** to correct course as unintended consequences emerge
-5. **Ethical responsibility** for the social impacts of epistemic technologies
-
-CivOS aspires to create conditions for more trustworthy, coherent sensemaking in a fractured information landscape. This aspiration is too important to abandon due to potential risks—but also too important to pursue without keeping those risks firmly in view.
-
-The path forward requires holding both the light and shadow of epistemic infrastructure in our field of vision.
-
----
-
-> *"We are no longer merely informed by technology—we are cognitively shaped, recursively, by epistemic structures we do not understand, cannot audit, and did not choose."*
+See the [technical overview](technical-overview.md) for implementation details and [CONTRIBUTING.md](CONTRIBUTING.md) for reporting a reproducible issue.

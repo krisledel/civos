@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Kris Ledel"><title>CivOS: install and test the complete workflow</title><style>body{max-width:880px;margin:0 auto;padding:50px 28px;background:#fafbf9;color:#1c2a3a;font:18px/1.75 Georgia,serif}header{font:14px Arial;border-bottom:1px solid #cfd8e3;padding-bottom:20px;margin-bottom:40px;display:flex;justify-content:space-between}h1,h2,h3{font-family:Arial;line-height:1.25;letter-spacing:-.5px}h1{font-size:40px}h2{font-size:25px;margin-top:48px}a{color:#1f59bd}pre{background:#17283e;color:#f4f7fc;overflow-x:auto;padding:22px;border-radius:6px;font:14px/1.7 Consolas,monospace}code{font-size:.86em}table{border-collapse:collapse;width:100%;font:14px/1.6 Arial}td,th{border:1px solid #cad6e6;padding:12px;text-align:left}th{background:#e9eff7}blockquote{border-left:3px solid #5484c7;padding:5px 22px;margin:25px 0;color:#49617e}footer{margin-top:60px;border-top:1px solid #cad6e6;padding-top:20px;font:13px Arial;color:#627589}@media(max-width:600px){body{padding:28px 18px}h1{font-size:30px}table{display:block;overflow-x:auto}}</style></head><body><header><strong>CivOS / Kris Ledel</strong><a href="/">Workspace</a></header><main><h1 id="civos-install-and-test-the-complete-workflow">CivOS: install and test the complete workflow</h1>
+<p><strong>Kris Ledel · September 2026</strong></p>
+<p>The web version of CivOS connects evidence, perspectives, review, deliberation, decisions, implementation, outcomes, and changes to working rules. You use forms in the browser. Records are saved on the server and can be reviewed from other accounts with assigned access.</p>
+<p>This guide covers the web version in the <code>web/</code> directory. The Python program in <code>civos/</code> is the earlier 0.2 prototype. Its commands create a local decision ledger and an HTML report. They do not launch the web version, and its JSON exports cannot be imported directly here.</p>
+<h2 id="1-install-dependencies-the-key-and-the-database">1. Install dependencies, the key, and the database</h2>
+<p>You need Node.js 22.13 or later. Get the version of the <a href="https://github.com/krisledel/civos">repository</a> that contains <code>web/</code>, or unpack the delivery package. Open a terminal in the repository root and run:</p>
+<pre><code class="language-sh">node --version
+cd web
+npm ci
+npm run setup:key
+npm run db:migrate
+npm run dev
+</code></pre>
+<p><code>npm ci</code> installs the versions in the lockfile. <code>setup:key</code> creates a private Ed25519 key in JWK format as the value of <code>CIVOS_SIGNING_KEY</code> in <code>web/.dev.vars</code>. The server uses the key to sign export bundles. The private key must stay there; the export contains the public key.</p>
+<p><code>.dev.vars</code> is a local, ignored file. Do not put it in version control, client code, or a shared package. Keep the same key if you want a local installation to retain its fingerprint over time. An intentional key change creates a new fingerprint that recipients need to check.</p>
+<p><code>db:migrate</code> runs the migrations against the local D1 database through <code>wrangler.local.json</code> and the <code>DB</code> binding. The command uses local mode. Attachments are stored through the <code>ATTACHMENTS</code> binding. The local database and object storage contain development data, not a copy of a hosted installation.</p>
+<p>Open the address printed by <code>dev</code> and use the page's sign-in flow. The development environment provides a local test identity. A private deployment uses the hosting platform's authentication. Do not expose the development server as a public service; the local test identity is not a production sign-in.</p>
+<p>Also check types and the production build from <code>web/</code>:</p>
+<pre><code class="language-sh">npm run typecheck
+npm run build
+</code></pre>
+<p>An installation without <code>CIVOS_SIGNING_KEY</code> cannot create signed exports. An error about missing tables means that the local database needs the correct migrations. Save the error message and resolve the underlying problem before continuing the trial.</p>
+<h2 id="2-create-the-workspace-and-understand-access">2. Create the workspace and understand access</h2>
+<p>Create a workspace with a clear purpose, such as “Test an extra evening opening at the community workshop.” The account that creates the workspace becomes its owner. An initial working rule is created with a requirement for one reviewer account, no required groups, and a maximum follow-up period of 30 days.</p>
+<p>There are four account roles:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>What the account can do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Owner</td>
+<td>Manage content, rules, invitations, access, and node trust. Revise their own and other contributors' records while preserving history.</td>
+</tr>
+<tr>
+<td>Editor</td>
+<td>Register content and rule proposals, and revise their own records.</td>
+</tr>
+<tr>
+<td>Reviewer</td>
+<td>Register assessments, arguments, and outcomes, and revise their own records of these types.</td>
+</tr>
+<tr>
+<td>Reader</td>
+<td>Read and export content without changing the original workspace.</td>
+</tr>
+</tbody>
+</table>
+<p>The owner can create an invitation code for one of the other three roles. The code is valid for 24 hours and can be used once. Give it to the intended participant through a channel you already use.</p>
+<p>A participant record is different from an account. It describes a name, role, groups, fields of knowledge, and interests. The name in the record grants no permissions. When an assessment is registered, the system also records which signed-in account entered it. These registering accounts are counted toward the decision rule's review requirement.</p>
+<h2 id="3-record-a-synthetic-case-across-all-layers">3. Record a synthetic case across all layers</h2>
+<p>Use the following invented case. It makes no claim about a real organisation:</p>
+<blockquote>
+<p>Fourteen of twenty responding members want the workshop to open on Tuesday from 18:00 to 20:00. Two volunteers can staff one trial session. The group is considering a single evening trial with a target of at least twelve actual visitors.</p>
+</blockquote>
+<p>Create the case and list “Members” and “Volunteers” as affected groups. Add a participant record for each group. State that the people and details are test data.</p>
+<p>Create two perspectives. The first concerns members' access to the premises and uses survey responses. The second concerns available staffing and uses the volunteers' schedule. For each, state what the method can show and what it misses.</p>
+<p>Add the concepts “desired opening time” and “staffable opening time” to their respective perspectives. Create an overlapping relation between them, limited to the trial week. Explicitly state that preferences are not binding bookings and that staffing does not guarantee attendance.</p>
+<p>Then create two sources: a synthetic survey and a synthetic staffing schedule. Their addresses can be <code>urn:civos:test:verkstad:enkat</code> and <code>urn:civos:test:verkstad:bemanning</code>. Give them different common-origin identifiers because they describe different test material. If you add several copies of the same survey, those copies should share the same origin.</p>
+<p>Register the observations with the correct source and perspective. Record time, place, and uncertainty. A measurement, an interpretation, a forecast, and a value judgment belong to different categories. Use the category that matches what you are actually claiming.</p>
+<h2 id="4-test-the-review-rule">4. Test the review rule</h2>
+<p>Register the option “Run one trial session.” Link it to both observations. State the benefit of measuring actual attendance, the cost of four volunteer hours, and that the trial ends after that single evening.</p>
+<p>Try to register a decision before the observations have been reviewed. It should be rejected. Then assess each observation and record the method, conclusion, evidence, interests, and reservations. A reviewer can support the accuracy of the survey summary while remaining uncertain about what it says about actual attendance.</p>
+<p>If you test a rule requiring two reviewer accounts, two separate accounts must register an assessment of every observation in the option's evidence basis. Two different participant names entered from the same account are not enough. In turn, two accounts do not prove that the reviewers are independent people or experts; your working process must address that.</p>
+<p>Add an argument from the members in favour of the trial and a condition from the volunteers: no automatic recurring opening. If the working rule requires these groups, the decision should be rejected until arguments from both have been registered. The representation check uses the group that the named participant is stated to represent. The application does not verify the person's mandate from that group.</p>
+<p>An assessment marked “Objects” or “Uncertain” does not disappear when a decision is registered. The requirement is for documented review. It does not require everyone to reach the same conclusion.</p>
+<h2 id="5-make-the-decision-and-record-the-outcome">5. Make the decision and record the outcome</h2>
+<p>Select the trial session as the option and assign a responsible participant. Describe the mandate claimed to authorise the group to organise the trial. Explain the decision while keeping the remaining uncertainty visible.</p>
+<p>Set a future follow-up date, for example seven days from now. Set the indicator to “Number of unique visitors,” the target condition to “At least,” the target value to <code>12</code>, and the unit to <code>personer</code> (people). Add a stopping condition: cancel the trial if fewer than two volunteers can staff it. Select the current working rule.</p>
+<p>Create a task with an owner, deadline, and status. In a synthetic test, you can then register an invented outcome of <code>8</code> people with its own source. The measurement time must follow the recorded decision. Use exactly <code>personer</code> as the unit here as well.</p>
+<p>Check that the overview shows the target was not met. Revise the task's status to done and state where its follow-up is recorded. Completing the task does not mean the target was met. An outcome below the target does not prove why it fell short.</p>
+<h2 id="6-change-the-rule-based-on-what-happened">6. Change the rule based on what happened</h2>
+<p>Create a change proposal linked to the decision and outcome. Describe the problem: expressed interest was used to estimate actual attendance. Propose that future cases report survey responses and confirmed bookings separately. Specify the desired number of reviewer accounts, required groups, and maximum follow-up period.</p>
+<p>The owner can accept or reject the proposal with a rationale. Acceptance creates both the rule resolution and a new version of the working rule. Check that a new decision requires the new version. The first decision should still show the rule that applied when it was registered.</p>
+<p>Corrections are made through revision. A new record refers to its predecessor with <code>supersedes</code>. The old record remains, and earlier references do not change. When an observation is revised, someone reviewing an older decision should be able to see that its evidence has changed.</p>
+<h2 id="7-export-import-and-continue-locally">7. Export, import, and continue locally</h2>
+<p>Export the workspace to a signed JSON file. The bundle contains the record history and details of the node, workspace, export time, hash-chain head, public key, and signature. It does not contain the node's private key. The signature covers the node's export envelope, not personal signatures from participants.</p>
+<p>Import the file without changing its content or formatting. The recipient checks the format, public key, fingerprint, Ed25519 signature, record hash chain, and references. A successful import creates a separate read-only branch containing the received history.</p>
+<p>Compare the key's fingerprint with the sender through a separate, known channel if you need to establish who the sender is. A valid signature means that the corresponding key signed the bundle. It does not mean the content is true, the organisation has a mandate, or the review was independent. The workspace owner can document recognised and revoked keys with a domain and rationale.</p>
+<p>Create a local continuation of the import when you want to work further. It gets its own access permissions and a local working rule. Imported permissions are not carried over. Register local assessments before new decisions; previously imported assessments do not automatically satisfy the new branch's local review requirement. Try making a decision before local review exists and check that it is rejected.</p>
+<p>Exports contain records, not attachment files, membership permissions, or node trust registers. An imported source may therefore show an attachment reference even when the file is absent from the new node. Share necessary files separately, compare their SHA-256 digests, and record their local availability. The export is not a complete operational backup.</p>
+<p>The branches remain separate. CivOS does not synchronise them automatically or determine which branch is right. New information, conflicts, and continued cooperation require local review and further transfers.</p>
+<h2 id="8-test-the-computational-model">8. Test the computational model</h2>
+<p>Open <strong>Models → Open synthetic example</strong>. This creates a separate workspace with three invented energy packages and two perspectives. Initially, Cost prefers Flexible and Continuity prefers Reserve. Save the initial analysis. Inspect the exact price switch at <code>4</code>, then record a clearly synthetic price measurement with bounds <code>[4.2,4.8]</code>, reference <code>4.5</code>, and unit <code>synthetic index</code>. Reserve becomes guaranteed preferred for both perspectives. The initial analysis remains unchanged and is flagged for review.</p>
+<p>Revise the model's stress assumption to <code>[3,4]</code>, reference <code>3.5</code>. Measurements belong to an exact model version, so record the synthetic price interval for that new version. Reserve now fails its hard constraint <code>stress ≤ 2.5</code> throughout the bounds. Balanced wins for both perspectives at the reference point, but the Cost perspective has no guaranteed winner across the price interval. Follow the <a href="civos-models.html">model guide</a> for the equations, exact boundaries, measurement conflicts, and decision attachments.</p>
+<p>Saved analyses cannot be revised in place. A decision may attach a current local analysis through <strong>Saved model analysis</strong>. Its option must satisfy every modeled hard constraint at the saved reference point; the usual decision checks also apply. Later evidence can flag that decision for review without altering its original result.</p>
+<p>To run automated checks, stop any existing development server and run <code>npm run test:ci</code> from <code>web/</code>. The command starts a local server, exercises the kernel and full API workflow, and stops it. If a server is already running, use <code>npm test</code>. Checks create synthetic workspaces only on localhost.</p>
+<h2 id="record-types-in-this-installation">Record types in this installation</h2>
+<table>
+<thead>
+<tr>
+<th>Record</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>case</code></td>
+<td>Define the question, context, and affected groups.</td>
+</tr>
+<tr>
+<td><code>actor</code></td>
+<td>Describe participants, responsibilities, groups, and interests.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>Record a source, method, origin, limitations, and attachment reference.</td>
+</tr>
+<tr>
+<td><code>observation</code></td>
+<td>State a claim with its category, evidence, perspective, and uncertainty.</td>
+</tr>
+<tr>
+<td><code>frame</code></td>
+<td>Describe a perspective's method, assumptions, and limitations.</td>
+</tr>
+<tr>
+<td><code>concept</code></td>
+<td>Define a concept within a perspective.</td>
+</tr>
+<tr>
+<td><code>mapping</code></td>
+<td>Relate two concepts with scope, translation loss, and rationale.</td>
+</tr>
+<tr>
+<td><code>assessment</code></td>
+<td>Review an observation, concept mapping, option, or outcome.</td>
+</tr>
+<tr>
+<td><code>option</code></td>
+<td>Describe an action option's basis, benefits, costs, and reversibility.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>Link executable equations and bounds to exact option and perspective versions.</td>
+</tr>
+<tr>
+<td><code>model_measurement</code></td>
+<td>Record a sourced interval and method for an evidence input in one model version.</td>
+</tr>
+<tr>
+<td><code>model_run</code></td>
+<td>Preserve a server-recomputed analysis, selected evidence, scenario, and exact history prefix.</td>
+</tr>
+<tr>
+<td><code>argument</code></td>
+<td>Document support, opposition, or conditions for an option.</td>
+</tr>
+<tr>
+<td><code>decision</code></td>
+<td>Record the choice, responsibility, mandate, uncertainty, target, rule version, and optional saved model analysis.</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td>Track implementation, owner, deadline, and status.</td>
+</tr>
+<tr>
+<td><code>outcome</code></td>
+<td>Record a measured value, evidence, limitations, and next step.</td>
+</tr>
+<tr>
+<td><code>policy</code></td>
+<td>Define the working rule and its procedural requirements.</td>
+</tr>
+<tr>
+<td><code>rule_change</code></td>
+<td>Propose a rule change based on specific experience.</td>
+</tr>
+<tr>
+<td><code>rule_resolution</code></td>
+<td>Accept or reject the change proposal with a rationale.</td>
+</tr>
+</tbody>
+</table>
+<p>Fields and validation are defined in <code>web/lib/model.ts</code>. Storage, access checks, and local branches are in <code>web/lib/store.ts</code>; bundle signing and verification are in <code>web/lib/bundles.ts</code>.</p>
+<h2 id="what-the-trial-demonstrates">What the trial demonstrates</h2>
+<p>The trial shows whether the complete workflow can be carried out and whether its intended constraints work. It does not show that CivOS improves decisions in a real organisation. That requires comparison with the way you already work.</p>
+<p>Ask someone who did not write the decisions to find their evidence, objections, responsible person, latest revision, target, and outcome. Measure both accuracy and time. Also count the cost of entering and reviewing records. Document whether participants could object and whether any affected group was absent.</p>
+<p>A legitimate mandate, factual truth, and decentralised consensus do not arise automatically in a database. CivOS makes it possible to document and examine such claims. The people and organisations using the system are responsible for what those claims mean in practice.</p>
+<p>Operational limits: at most 1,900 entries and 1.5 MB of canonical record history per workspace, 2 MB per transfer file, and 5 MB per attachment. Cases have stable IDs and cannot be revised. Re-exporting a read-only import preserves the original envelope and signature. A local continuation exports signed lineage metadata: the base head and sequence, source node, key fingerprint, and original envelope hash. The original receipt is retained locally.</p></main><footer>Kris Ledel · CivOS · September 2026</footer></body></html>

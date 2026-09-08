@@ -1,0 +1,1 @@
+ALTER TABLE `spaces` ADD `local_start` integer DEFAULT 1 NOT NULL;

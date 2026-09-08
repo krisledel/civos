@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Kris Ledel"><title>CivOS: an instruction set for shared inquiry and accountable action</title><style>body{max-width:880px;margin:0 auto;padding:50px 28px;background:#fafbf9;color:#1c2a3a;font:18px/1.75 Georgia,serif}header{font:14px Arial;border-bottom:1px solid #cfd8e3;padding-bottom:20px;margin-bottom:40px;display:flex;justify-content:space-between}h1,h2,h3{font-family:Arial;line-height:1.25;letter-spacing:-.5px}h1{font-size:40px}h2{font-size:25px;margin-top:48px}a{color:#1f59bd}pre{background:#17283e;color:#f4f7fc;overflow-x:auto;padding:22px;border-radius:6px;font:14px/1.7 Consolas,monospace}code{font-size:.86em}table{border-collapse:collapse;width:100%;font:14px/1.6 Arial}td,th{border:1px solid #cad6e6;padding:12px;text-align:left}th{background:#e9eff7}blockquote{border-left:3px solid #5484c7;padding:5px 22px;margin:25px 0;color:#49617e}footer{margin-top:60px;border-top:1px solid #cad6e6;padding-top:20px;font:13px Arial;color:#627589}@media(max-width:600px){body{padding:28px 18px}h1{font-size:30px}table{display:block;overflow-x:auto}}</style></head><body><header><strong>CivOS / Kris Ledel</strong><a href="/">Workspace</a></header><main><h1 id="civos-an-instruction-set-for-shared-inquiry-and-accountable-action">CivOS: an instruction set for shared inquiry and accountable action</h1>
+<p><strong>Kris Ledel · September 2026</strong></p>
+<p>CivOS begins with a practical problem: a group can possess plenty of information and still be unable to explain how it reached a decision, whose interpretation prevailed, or what happened afterwards. The missing connection is often between different parts of the process. Observations lose their conditions. Concepts change meaning between groups. Reviews disappear into summaries. Decisions outlive the evidence that justified them.</p>
+<p>The original CivOS architecture proposed five connected layers: perception, cognitive frames, trust, consequential action, and reflection on coordination itself. The web implementation now gives each layer an explicit place in the same working environment. It supports recording, comparison, review, decisions, outcomes, and changes to the rules governing those activities.</p>
+<p>This is the software portion of a broader institutional proposal. A running application does not establish public legitimacy, factual truth, or a society's capacity to coordinate. Those require people, procedures, evidence, and scrutiny outside the application. The implementation makes their recorded claims and relationships inspectable.</p>
+<h2 id="a-question-that-crosses-all-five-layers">A question that crosses all five layers</h2>
+<p>A fictional community workshop is considering an extra evening opening. Fourteen members say they would like to attend. Volunteers can staff one trial session but have not committed to a regular schedule. The members' question is whether opening times fit their lives. The volunteers' question is whether the proposed service can be delivered.</p>
+<p>These perspectives meet at a proposed Tuesday evening. They do not thereby become equivalent. An expression of interest is different from a confirmed booking. A staffed evening is different from a well-attended evening. If the group collapses them into a single positive score, it loses information it will need when the trial fails to meet its target.</p>
+<p>In CivOS the group can retain these distinctions, approve a bounded trial, assign responsibility, count attendance, and revise its procedure. Suppose eight people attend against a target of twelve. The application shows the missed target. Participants then decide whether future proposals should distinguish survey interest from confirmed attendance. This example is synthetic. It reports no deployment or measured benefit.</p>
+<h2 id="1-observation-carries-its-context">1. Observation carries its context</h2>
+<p>The first layer connects an observation to its source, time, place, method, uncertainty, and relevant perspective. An entry identifies whether it is an observation, interpretation, forecast, or value judgment. These labels help a reviewer understand the kind of claim being made; selecting one does not certify it.</p>
+<p>Sources retain their address, collection method, limitations, and common origin. If several documents reproduce the same survey, the group can identify that shared origin. Counting documents without examining their relationship would exaggerate the evidence.</p>
+<p>Documents can be attached to the workspace and linked to source records by identifier and SHA-256 digest. A digest lets someone compare file contents. It cannot establish whether the source observed an event accurately.</p>
+<h2 id="2-perspectives-keep-their-meanings">2. Perspectives keep their meanings</h2>
+<p>A perspective describes what it pays attention to, how it investigates, what it assumes, where it applies, and what it misses. Concepts belong to a perspective and retain a definition and examples.</p>
+<p>A mapping connects two concepts through an explicit relation: overlapping, narrower, broader, incompatible, or equivalent within a stated scope. It also records what the translation loses and why the proposed relation is defensible. The workshop's desired opening time and staffed opening time can overlap without becoming synonyms.</p>
+<p>These records create something participants can challenge. They do not automatically translate language, infer an ontology, or resolve a cultural disagreement. A contested mapping can receive its own assessment, just as an empirical observation can.</p>
+<h2 id="3-trust-is-a-record-of-judgments-and-responsibilities">3. Trust is a record of judgments and responsibilities</h2>
+<p>An assessment identifies its target, stated reviewer, perspective, conclusion, method, evidence, interests, and reservations about independence. Support, objection, and uncertainty remain separate conclusions. Several reviews can disagree without being averaged into a universal credibility score.</p>
+<p>The system distinguishes the account that entered a record from a participant described inside it. A participant record may state an organisational role or a field of knowledge. That statement is not an authenticated credential and confers no access rights.</p>
+<p>Workspace roles govern actual application access. Owners manage membership, rules, and the local record of recognised or revoked node keys. Editors register material and revise their own records. Reviewers contribute assessments, arguments, and outcomes. Readers inspect and export the material they can access. Owners may also revise another contributor's record, with the earlier version retained.</p>
+<p>The configured number of reviewer accounts is a procedural requirement. Multiple accounts do not prove independent expertise. The same distinction applies to representation: an argument attributed to a group does not prove that the group authorised the speaker.</p>
+<h2 id="4-decisions-return-to-observable-consequences">4. Decisions return to observable consequences</h2>
+<p>An option identifies a proposed action, its observational basis, expected benefits, costs, and reversibility. Arguments state support, opposition, or conditions, with references to the material being discussed.</p>
+<p>Before accepting a decision, the application checks the current rule, the required number of registering reviewer accounts for every observation in the selected option's basis, and arguments from required groups. It requires a future review date. A decision also records its owner, claimed authority, rationale, accepted uncertainty, unresolved objections, measurable target, and stopping condition.</p>
+<p>Passing these checks does not establish a right to act. The application records a mandate claim; the responsible organisation must establish the mandate itself. An outstanding objection can remain visible when a decision proceeds.</p>
+<p>Tasks connect implementation to an owner and deadline. Outcomes record the observed value, unit, measurement method, sources, limitations, and next step. The unit must match the decision's target, and the measurement cannot predate the recorded decision. The application compares values using at least, at most, or exactly. It does not infer that the decision caused the observed result.</p>
+<h2 id="5-the-process-can-examine-and-revise-itself">5. The process can examine and revise itself</h2>
+<p>The coordination view exposes observations without assessments, unresolved objections, missing group contributions, overdue tasks, absent follow-up, missed targets, and references to superseded material. These findings identify records needing attention. They do not diagnose an institution's overall health.</p>
+<p>Participants can propose a rule change and connect it to the cases, assessments, decisions, or outcomes that motivated it. The owner records acceptance or rejection. Acceptance creates a new rule version. Subsequent decisions must use that version, while earlier decisions retain their original references.</p>
+<p>This closes a practical loop: evidence informs action; outcomes inform a review of the process; the process changes through a recorded decision. The loop remains open to criticism because neither the old evidence nor the old rules disappear.</p>
+<h2 id="models-compute-consequences-of-stated-assumptions">Models compute consequences of stated assumptions</h2>
+<p>The computational workbench connects registered options and perspectives to explicit affine equations, input bounds, and hard constraints. Each perspective defines its own score scale. Higher scores are preferred within that perspective. The application keeps those scales separate and compares which options each perspective prefers.</p>
+<p>Inputs are declared as evidence, assumptions, or value judgments. These categories belong to the author; the software does not infer or validate them. Moving a reference value explores a scenario. Recording a sourced measurement supplies a new interval. Neither action silently changes a perspective's values.</p>
+<p>For an expression <code>f(x) = c + Σ aᵢxᵢ</code>, with each input bounded by <code>[lᵢ,uᵢ]</code>, the exact lower bound is <code>c + Σ min(aᵢlᵢ,aᵢuᵢ)</code> and the upper bound uses <code>max</code>. The uncertainty set is the entire Cartesian box. No probabilities or correlations are inferred. Comparisons operate on the difference between two score expressions before bounding it, so shared input terms cancel correctly.</p>
+<p>An option receives a guaranteed-preference certificate when every modeled hard constraint holds throughout the box and its score is at least as high as every competitor the test has not proved impossible. This is a sufficient, conservative certificate; its absence does not prove that no acceptable option exists. Pointwise winners, including ties, are shown separately. The kernel also calculates exact switching boundaries while holding other inputs at their reference values, and sufficient measurement ranges that retain all other input uncertainty.</p>
+<p>For example, two synthetic cost scores <code>80 - 8 * price</code> and <code>20 + 7 * price</code> tie at <code>price = 4</code>. Moving the reference value above 4 changes the pointwise preference. Narrowing the evidence interval to <code>[4.2,4.8]</code> establishes a preference throughout that interval. A separate hard constraint can still exclude the higher-scoring option. The <a href="civos-models.html">computational-model guide</a> provides the complete two-perspective example, including a failed constraint and revision handling.</p>
+<p>The <code>civos.affine.v1</code> implementation supports 1–8 inputs, 2–6 options, 1–4 perspectives and up to four constraints per option and perspective. It uses rational arithmetic for represented inputs, with rounded decimal display. Nonlinear expressions are rejected. A bounded parser, coefficient-precision budget, and exact-arithmetic limits constrain calculation size. These are standard affine and interval calculations; their integration with perspective-specific models, evidence versions, and decision history is the implemented contribution.</p>
+<p>Saving an analysis records the exact model version, selected measurements, scenario, kernel version, and history-prefix hash and sequence. The server recalculates the stored summary; replay checks it again. New evidence can flag the analysis and attached decisions for review. Model, option, perspective, and source revisions preserve old references and block the earlier basis pending review. Conflicting measurements require an explicit choice. Saved analyses are immutable; a changed basis requires a new analysis.</p>
+<p>A decision can attach a current local analysis containing its chosen option. The option must satisfy all modeled hard constraints at the saved reference values. The application does not require it to be preferred or guaranteed feasible across every bound; those judgments remain visible for the decision's rationale. Existing review, responsibility, working-rule, and follow-up requirements still apply.</p>
+<h2 id="the-complete-record-model">The complete record model</h2>
+<p>The implementation contains nineteen record types:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scope and participants</td>
+<td><code>case</code>, <code>actor</code></td>
+</tr>
+<tr>
+<td>Observation and provenance</td>
+<td><code>source</code>, <code>observation</code></td>
+</tr>
+<tr>
+<td>Interpretation</td>
+<td><code>frame</code>, <code>concept</code>, <code>mapping</code></td>
+</tr>
+<tr>
+<td>Computational models</td>
+<td><code>model</code>, <code>model_measurement</code>, <code>model_run</code></td>
+</tr>
+<tr>
+<td>Review</td>
+<td><code>assessment</code></td>
+</tr>
+<tr>
+<td>Deliberation and action</td>
+<td><code>option</code>, <code>argument</code>, <code>decision</code>, <code>task</code></td>
+</tr>
+<tr>
+<td>Feedback</td>
+<td><code>outcome</code></td>
+</tr>
+<tr>
+<td>Rules and their revision</td>
+<td><code>policy</code>, <code>rule_change</code>, <code>rule_resolution</code></td>
+</tr>
+</tbody>
+</table>
+<p>A correction appends a new record referring to its predecessor through <code>supersedes</code>. The old record remains. References made by older decisions continue to point to the evidence used at the time. A later correction therefore creates a reason to reconsider affected decisions, rather than silently rewriting their history.</p>
+<h2 id="exchange-without-automatic-agreement">Exchange without automatic agreement</h2>
+<p>A workspace can export its record history in a canonical JSON bundle signed with the node's Ed25519 key. The receiver verifies the format, public-key fingerprint, signature, record hashes, and references. The signature covers the node's export envelope. It is not a personal signature by each participant.</p>
+<p>Import creates an isolated, read-only branch. It does not overwrite another workspace or grant imported accounts local permissions. A local continuation preserves the source history and establishes its own membership and rule. New decisions require local re-examination; assessments imported from the source do not automatically satisfy the local review requirement.</p>
+<p>The local trust register records a key fingerprint, domain, status, and reason. A mathematically valid signature and a recognised source are distinct conditions. Where identity matters, the receiver needs an independently known way to confirm the fingerprint.</p>
+<p>The bundle carries records, not attachment files, membership permissions, or the local trust register. File references and digests can survive the transfer even when the files themselves are absent. Necessary files must be transferred separately and checked.</p>
+<p>This mechanism enables manual exchange and independent continuation. It provides no automatic federation, conflict merger, or decentralised consensus. A node operator who controls the database and private key can produce a newly signed replacement history. Independently retained exports provide a basis for comparison; they do not make the operator infallible.</p>
+<h2 id="run-the-current-implementation">Run the current implementation</h2>
+<p>The web application lives in <code>web/</code> and requires Node.js 22.13 or later. From the repository root:</p>
+<pre><code class="language-sh">cd web
+npm ci
+npm run setup:key
+npm run db:migrate
+npm run dev
+</code></pre>
+<p>The key setup command creates the private JWK used for node signing in the ignored <code>.dev.vars</code> file as <code>CIVOS_SIGNING_KEY</code>. Database migrations initialise the local D1 store. The application also uses the <code>ATTACHMENTS</code> object-storage binding. Use the local page's sign-in flow; the development identity is for testing. Hosted private access uses the deployment platform's authentication.</p>
+<p>Run <code>npm run typecheck</code> and <code>npm run build</code> to check the code and production build. The installation guide describes the full trial, including deliberate review failures, a missed target, rule revision, export, and a new local branch.</p>
+<p>The Python program in <code>civos/</code> remains the earlier <strong>0.2 command-line prototype</strong>. Its five-record ledger, HTML report, and JSON format are separate. Running its demo does not launch this web application, and its exports are not automatically converted into web workspaces.</p>
+<p>The test of CivOS is whether people can use the complete process to understand and correct their work at a tolerable cost. Compare it with existing notes or issue tracking. Measure reconstruction errors, time, correction effort, retained objections, and missing outcomes. Record who could participate and who could not. A successful build proves that software can run. Its institutional usefulness still has to be demonstrated.</p>
+<p><a href="https://github.com/krisledel/civos">Code and documentation</a>.</p>
+<p>Operational limits: at most 1,900 entries and 1.5 MB of canonical record history per workspace; a transfer file is limited to 2 MB and each attachment to 5 MB. Case IDs are stable: cases cannot be revised. Re-exporting a read-only import preserves its original envelope and signature. A local continuation exports signed lineage metadata (base head, base sequence, source node, source key fingerprint and original envelope hash). The original receipt is retained locally.</p></main><footer>Kris Ledel · CivOS · September 2026</footer></body></html>

@@ -1,181 +1,60 @@
 # Contributing to CivOS
 
-Thank you for your interest in contributing to the CivOS project! This document provides guidelines and information for contributors.
+CivOS implements an account-controlled web workspace with explicit affine models, versioned evidence, review, decisions, and follow-up, alongside the earlier Python ledger. Contributions should improve an observable behavior, clarify a design claim, or make a limitation easier to test. Read the [README](README.md), [technical overview](technical-overview.md), [philosophical basis](philosophical-basis.md), and [threat model](thedarkmirror).
 
-## Table of Contents
+## Check the web application
 
-- [Project Philosophy](#project-philosophy)
-- [Ways to Contribute](#ways-to-contribute)
-- [Development Process](#development-process)
-- [Code and Documentation Standards](#code-and-documentation-standards)
-- [Communication Channels](#communication-channels)
-- [Governance Model](#governance-model)
+Use Node.js 22.13 or later. From `web/`, install dependencies with `npm ci`, create the local key with `npm run setup:key`, and apply migrations with `npm run db:migrate`. Then run:
 
-## Project Philosophy
-
-CivOS is built on the recognition that we face fundamental epistemic challenges in our information environment. Our goal is to create practical tools and frameworks that enhance coordination across different knowledge systems, improve information provenance and trust, and rebuild our collective sense-making capabilities.
-
-Our approach is characterized by:
-
-- **Epistemic Pluralism**: We value diverse ways of knowing and aim to create systems that allow multiple knowledge frameworks to interact productively.
-- **Practical Implementation**: We balance philosophical depth with concrete, implementable solutions.
-- **Distributed Coordination**: We favor approaches that distribute agency and avoid single points of failure.
-- **Empirical Validation**: We test our ideas through real-world implementations and adapt based on evidence.
-- **Reflexive Design**: We apply the principles of recursivity and self-examination to our own development process.
-
-## Ways to Contribute
-
-There are many ways to contribute to CivOS, regardless of your technical background:
-
-### For Developers
-
-- Implement core components of the CivOS architecture
-- Create integration libraries for existing platforms and tools
-- Build example applications demonstrating CivOS principles
-- Improve documentation and developer guides
-- Write tests and improve quality assurance
-
-### For Domain Experts
-
-- Contribute use cases from your field of expertise
-- Help translate CivOS concepts to specific domains
-- Provide feedback on implementations in your domain
-- Connect the project with relevant stakeholders and communities
-
-### For Researchers
-
-- Help strengthen the theoretical foundations
-- Document relevant research and evidence
-- Design experiments and evaluation frameworks
-- Contribute to publications and knowledge dissemination
-
-### For Everyone
-
-- Test implementations and provide feedback
-- Improve documentation and translations
-- Participate in community discussions
-- Share the project with others who might be interested
-
-## Development Process
-
-### Getting Started
-
-1. **Familiarize yourself with the project**:
-   - Read the [Philosophical Basis](../docs/philosophical-basis.md)
-   - Review the [Technical Overview](../docs/technical-overview.md)
-   - Explore the [examples](../examples)
-
-2. **Set up your development environment**:
-   ```bash
-   git clone https://github.com/civos-initiative/civos.git
-   cd civos
-   npm install  # or equivalent for your component
-   ```
-
-3. **Find an issue to work on**:
-   - Look for issues labeled `good-first-issue` or `help-wanted`
-   - Introduce yourself in the issue comments before starting work
-   - Ask questions if anything is unclear
-
-### Contribution Workflow
-
-1. **Fork the repository** to your own account
-2. **Create a branch** for your feature or fix
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes** following our code standards
-4. **Write tests** for new functionality
-5. **Update documentation** as needed
-6. **Commit your changes** with clear, descriptive messages
-7. **Submit a pull request** referencing any related issues
-
-### Review Process
-
-All contributions go through a review process:
-
-1. **Automated checks** will verify formatting, tests, etc.
-2. **Peer review** by at least one other contributor
-3. **Maintainer approval** before merging
-4. **Integration testing** for larger changes
-
-We aim to review pull requests within 1-2 weeks. Please be patient and responsive to feedback.
-
-## Code and Documentation Standards
-
-### Code Standards
-
-- Follow language-specific style guides:
-  - JavaScript/TypeScript: [StandardJS](https://standardjs.com/)
-  - Python: [PEP 8](https://www.python.org/dev/peps/pep-0008/)
-- Write clear comments for complex logic
-- Include appropriate error handling
-- Write tests for new functionality
-- Ensure accessibility compliance where relevant
-
-### Documentation Standards
-
-- Write in clear, accessible English
-- Use inclusive language
-- Include examples where possible
-- Follow [CommonMark](https://commonmark.org/) for Markdown
-- Keep technical and conceptual documentation separate
-
-### Commit Message Format
-
-We follow a simplified version of [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-type(scope): short summary
-
-Detailed explanation if needed
+```sh
+npm run lint
+npm run typecheck
+npm run test:ci
+npm run build
 ```
 
-Types include: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+`test:ci` starts and stops a local server. Use `npm test` instead when one is already running. Include a regression for changed mathematical or historical semantics. Preserve exact ties, conditional guarantees, historical references, and separate perspective scales. Read the [model guide](articles/civos-models.md) before changing the kernel.
 
-Example: `feat(trust): implement basic reputation calculation`
+## Run the legacy Python prototype
 
-## Communication Channels
+Use Python 3.10 or later with SQLite support. The implementation uses the Python standard library; no package installation is required.
 
-- **Issues**: Use GitHub issues for bug reports, feature requests, and specific tasks
-- **Discussions**: Use GitHub Discussions for broader topics and questions
-- **Discord**: Join our [Discord server](https://discord.gg/civos-commons) for real-time chat
-- **Forum**: Participate in longer discussions on our [forum](https://discuss.civos.org)
-- **Meetings**: Attend our monthly community calls (announced on Discord)
+```sh
+git clone https://github.com/krisledel/civos.git
+cd civos
+python --version
+python -m unittest discover -s tests -v
+python -m civos --db work/demo.sqlite3 demo
+python -m civos --db work/demo.sqlite3 verify
+python -m civos --db work/demo.sqlite3 report --as-of 2026-09-08T12:00:00Z --output work/report.html
+```
 
-## Governance Model
+On systems where the interpreter is named `python3`, use that command throughout. On Windows, `py -3` is another option if it selects Python 3.10 or later. Keep generated databases, reports, and exports in `work/`, outside the source and fixtures.
 
-CivOS follows a polycentric governance model that reflects our philosophical foundations:
+The demo requires an empty database, and report and export commands require unused output filenames. Choose new paths when repeating the exercise. The demonstration contains synthetic records. It is not a field result or a real decision to be executed.
 
-- **Core Team**: Responsible for overall project direction and major decisions
-- **Working Groups**: Focus on specific aspects (e.g., Trust Systems, Knowledge Mapping)
-- **Contributors**: Anyone who participates in the project
-- **Community Council**: Elected representatives who provide oversight and conflict resolution
+## Submit a useful change
 
-Decisions are made through a combination of consensus-seeking and, when necessary, voting. Our [Governance Document](../community/GOVERNANCE.md) provides more details.
+Fork the repository and work on a branch. Keep a pull request focused enough that a reader can assess the resulting behavior. Explain the problem, the change, and how you checked it. For a behavioral change, include a test of the relevant invariant or failure case. For a documentation correction, identify the inaccurate statement and verify the replacement against the implementation or a primary source.
 
-## Epistemic Practices
+Use the [repository](https://github.com/krisledel/civos) for issues and pull requests. No particular issue labels, review deadline, or formal voting process is promised. Repository maintainers decide what is merged; a merged contribution does not authorize a real-world pilot or decision.
 
-As a project centered on epistemics, we encourage contributors to:
+## Bug reports
 
-- **Explicitly state assumptions** in proposals and designs
-- **Provide reasoning and evidence** for claims when possible
-- **Acknowledge limitations** of approaches and implementations
-- **Document alternative viewpoints** when disagreements arise
-- **Reflect on the epistemic implications** of technical choices
+Include the Node.js or Python version, operating system, exact command, expected behavior, actual output, and the smallest synthetic input that reproduces the problem. Say whether the database was new or already contained records. Do not attach private records, credentials, or identifying testimony.
 
-## Recognition and Attribution
+For a hash-chain issue, distinguish three cases: an inconsistent chain, a mismatch with an independently retained expected head, and a rewritten but internally consistent history. Internal verification cannot by itself identify the third case.
 
-We believe in recognizing all forms of contribution. Beyond commits, we track:
+## Implementation standards
 
-- Documentation improvements
-- Issue reporting and refinement
-- Community support and mentoring
-- Testing and feedback
-- Concept development
+Keep record validation, persistence, and presentation responsibilities clear. Preserve historical records when adding corrections. Reject invalid relationships explicitly and avoid partially applying an invalid batch. Handle input errors with messages that help a user repair the input.
 
-See our [Contributors page](https://civos.org/contributors) for acknowledgment of these diverse contributions.
+Run the test suite above before submitting a code change. When changing the CLI, run the documented example and update its commands. When changing a report, inspect the rendered HTML for missing objections, misleading dates, and unescaped input. Do not add dependencies unless the benefit and installation cost are explained.
 
----
+## Writing and evidence
 
-Thank you for considering contributing to CivOS. If you have any questions or need guidance, please reach out through any of our communication channels.
+Distinguish implemented behavior, design proposals, and empirical results. Cite primary sources for factual research claims, close to the claim they support. Do not infer that a general paper about cognition or governance validates CivOS. Label invented people, data, and outcomes as synthetic or fictional.
+
+Keep provenance separate from factual truth and procedure separate from legitimacy. Describe objections fairly. Avoid universal truth scores, personal reputation rankings, and claims of distributed operation that the code does not implement.
+
+Participation follows the [Code of Conduct](CODE_OF_CONDUCT.md). The repository's [LICENSE](LICENSE) states its licensing terms; do not introduce material you lack permission to contribute.
