@@ -8,13 +8,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { kinds, active, type Entry } from '@/lib/model';
 type Edge = { from: string; to: string; label: string };
 const palette: Record<string, string> = {
-  overview: '#80e8f5',
-  observe: '#55c7ed',
-  frames: '#8c9bff',
-  trust: '#57d7ad',
+  overview: '#b7bdbe',
+  observe: '#9da3a5',
+  frames: '#c2c3c9',
+  trust: '#939b98',
   decide: '#e4b66b',
   outcomes: '#dba2ef',
-  coordinate: '#8da7b8',
+  coordinate: '#a1a3a4',
 };
 export function RecordGraph({
   entries,
@@ -201,7 +201,7 @@ export function RecordGraph({
                   <path
                     d="M 24 0 L 0 0 0 24"
                     fill="none"
-                    stroke="#284957"
+                    stroke="#3e4041"
                     strokeWidth="0.5"
                     opacity=".4"
                   />
@@ -215,7 +215,7 @@ export function RecordGraph({
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#608e9f" />
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#7e8081" />
                 </marker>
               </defs>
               <rect
@@ -236,7 +236,7 @@ export function RecordGraph({
                       y1={a.y}
                       x2={b.x}
                       y2={b.y}
-                      stroke={lit ? '#71e2f4' : '#416c80'}
+                      stroke={lit ? '#afb5b6' : '#5f6162'}
                       strokeWidth={lit ? 2 : 1}
                       opacity={focus && !lit ? 0.14 : 0.7}
                       markerEnd="url(#arrowhead)"
@@ -279,7 +279,7 @@ export function RecordGraph({
                       cx={n.x}
                       cy={n.y}
                       r={22}
-                      fill={isSelected ? '#163544' : 'transparent'}
+                      fill={isSelected ? '#2c2d2e' : 'transparent'}
                       stroke={isSelected ? color : 'transparent'}
                       strokeWidth="1"
                     />
@@ -288,7 +288,7 @@ export function RecordGraph({
                       cy={n.y}
                       r={isSelected ? 10 : 7}
                       fill={color}
-                      stroke={isSelected ? '#dcfbff' : '#07151f'}
+                      stroke={isSelected ? '#edeeee' : '#121314'}
                       strokeWidth={isSelected ? 3 : 2}
                     />
                     <text
@@ -306,7 +306,7 @@ export function RecordGraph({
                         x={n.x}
                         y={n.y + 31}
                         textAnchor="middle"
-                        fill={isSelected ? '#e9fbff' : '#b3cad6'}
+                        fill={isSelected ? '#f3f4f5' : '#c4c5c5'}
                         fontSize="12"
                       >
                         {String(n.entry.data.title).slice(0, 25)}

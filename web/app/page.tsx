@@ -22,13 +22,6 @@ import {
   FolderOpen,
   ArrowLeft,
   X,
-  Library,
-  CircleCheck,
-  Clock3,
-  BookOpen,
-  Users,
-  Compass,
-  ArrowUpRight,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -72,11 +65,11 @@ import {
   dependencyHint,
 } from '@/components/civos/forms';
 import { RecordGraph } from '@/components/civos/graph';
-import { SystemMap } from '@/components/civos/system-map';
+import { CaseWorkbench } from '@/components/civos/case-workbench';
 import { QuickSwitcher } from '@/components/civos/quick-switcher';
 import type { Space } from '@/lib/store';
 const layers = [
-  { id: 'overview', name: 'Arbetsyta', icon: Workflow },
+  { id: 'overview', name: 'Arbetsfält', icon: Workflow },
   { id: 'graph', name: 'Sambandsgraf', icon: Network },
   { id: 'observe', name: 'Observationer', icon: Eye },
   { id: 'frames', name: 'Perspektiv', icon: Network },
@@ -112,8 +105,7 @@ export default function Home() {
     [busy, setBusy] = useState(false),
     [auth, setAuth] = useState(false),
     [loaded, setLoaded] = useState(false),
-    [sidebarOpen, setSidebarOpen] = useState(true),
-    [allFindings, setAllFindings] = useState(false),
+    [sidebarOpen, setSidebarOpen] = useState(false),
     [navigationStep, setNavigationStep] = useState(0),
     [editor, setEditor] = useState<{ kind: string; entry?: Entry } | null>(
       null,
@@ -145,9 +137,6 @@ export default function Home() {
   useEffect(() => {
     if (detail) document.getElementById('document-title')?.focus();
   }, [detail]);
-  useEffect(() => {
-    setAllFindings(false);
-  }, [sid, caseId]);
   const refreshSpaces = useCallback(async (chosen?: string) => {
     const r = await fetch('/api/civos');
     if (r.status === 401) {
@@ -242,19 +231,14 @@ export default function Home() {
           .toLocaleLowerCase('sv')
           .includes(search.toLocaleLowerCase('sv'))),
   );
-  const scopedFindings = (snap?.findings || []).filter(
-    (finding) =>
-      caseId === 'all' ||
-      finding.ids.some(
-        (id) => byId.get(id)?.caseId === caseId || id === caseId,
-      ),
-  );
   const kindOptions = Object.entries(kinds).filter(
       ([, v]) => v.layer === layer,
     ),
     title = layers.find((l) => l.id === layer)!.name;
   const navigate = (id: string) => {
     setNavigationStep((step) => step + 1);
+    if (layer === 'overview' && caseId === 'all' && cases[0])
+      setCase(cases[0].id);
     if (window.innerWidth <= (sidebarOpen ? 1359 : 1119)) {
       setDetail(null);
       setDocumentHistory([]);
@@ -330,62 +314,9 @@ export default function Home() {
       <MobileMenuDismiss
         selection={`${sid}:${navigationStep}:${spaceDialog}`}
       />
-      <nav className="icon-rail" aria-label="Snabbnavigering">
-        <div className="rail-mark">
-          <Layers3 />
-        </div>
-        <button
-          aria-label="Arbetsyta"
-          onClick={() => navigate('overview')}
-          className={layer === 'overview' ? 'active' : ''}
-        >
-          <Library />
-        </button>
-        <button
-          aria-label="Sambandsgraf"
-          onClick={() => navigate('graph')}
-          className={layer === 'graph' ? 'active' : ''}
-        >
-          <Network />
-        </button>
-        <button aria-label="Samordning" onClick={() => navigate('coordinate')}>
-          <Settings2 />
-        </button>
-        <span className="rail-bottom">KL</span>
-      </nav>
       <Sidebar className="civos-sidebar">
         <SidebarHeader>
-          <div className="brand">
-            <Layers3 />
-            <strong>CivOS</strong>
-          </div>
-          <span className="small-label">KUNSKAP · PERSPEKTIV · HANDLING</span>
-          <div className="workspace-selector">
-            {spaces.length > 0 && (
-              <Picker
-                value={sid}
-                change={setSid}
-                options={spaces.map((s) => ({ id: s.id, label: s.title }))}
-                label="Välj arbetsyta"
-              />
-            )}
-            <Button
-              variant="ghost"
-              className="new-workspace"
-              onClick={() => setSpaceDialog(true)}
-              disabled={auth || busy}
-              aria-label="Skapa ny arbetsyta"
-              title="Skapa ny arbetsyta"
-            >
-              <Plus size={16} />
-              {!spaces.length && 'Ny arbetsyta'}
-            </Button>
-          </div>
-          <QuickSwitcher
-            entries={current}
-            onOpen={openDocument}
-            onGraph={() => navigate('graph')}
-          />
+          <span className="sidebar-title">Dokument & vyer</span>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
@@ -450,58 +381,85 @@ export default function Home() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <div className="owner-avatar">KL</div>
-          <strong>Kris Ledel</strong>
-          <span className="small-label">CivOS</span>
+          <span className="author-credit">CivOS / Kris Ledel</span>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="workspace-top">
-          <SidebarTrigger />
-          <div className="workspace-tab">
-            <FileText size={14} />
-            <span>{title}</span>
-          </div>
-          <button className="tab-graph" onClick={() => navigate('graph')}>
-            <Network size={14} />
-            Grafvy
-          </button>
-          <span className="system-status">
+          <SidebarTrigger aria-label="Öppna dokumentpanelen" />
+          <button
+            className="wordmark"
+            onClick={() => navigate('overview')}
+            aria-label="CivOS arbetsfält"
+          >
+            Civ<span>OS</span>
             <i />
-            {snap ? 'Arbetsyta ansluten' : 'Arbetsyta'}
-          </span>
-        </header>
-        <main className="workspace-main">
-          <div className="section-title">
-            <div>
-              <span className="small-label">
-                {snap?.space.title || 'CivOS'} / {title}
-              </span>
-              <h1>
-                {layer === 'overview' ? snap?.space.title || 'CivOS' : title}
-              </h1>
-              <p>
-                {snap?.space.purpose ||
-                  'Samla underlag. Pröva perspektiv. Följ besluten.'}
-              </p>
-            </div>
-            {snap && layer === 'overview' && (
-              <div className="header-actions">
-                <Button variant="outline" onClick={() => navigate('graph')}>
-                  <Network size={16} /> Visa samband
-                </Button>
-                {canKind('case') && (
-                  <Button
-                    className="primary-action"
-                    onClick={() => newEntry('case')}
-                    disabled={busy}
-                  >
-                    <Plus size={16} /> Nytt ärende
-                  </Button>
-                )}
-              </div>
+          </button>
+          <div className="header-workspace">
+            {spaces.length > 0 && (
+              <Picker
+                value={sid}
+                change={setSid}
+                options={spaces.map((space) => ({
+                  id: space.id,
+                  label: space.title,
+                }))}
+                label="Välj arbetsyta"
+              />
             )}
           </div>
+          <QuickSwitcher
+            entries={current}
+            onOpen={openDocument}
+            onGraph={() => navigate('graph')}
+          />
+          <Button
+            variant="ghost"
+            onClick={() => setSpaceDialog(true)}
+            disabled={auth || busy}
+            aria-label="Skapa arbetsyta"
+            title="Skapa arbetsyta"
+          >
+            <Plus size={17} />
+          </Button>
+          {snap && (
+            <Button
+              variant="ghost"
+              onClick={() => run(refresh)}
+              disabled={busy}
+              aria-label="Uppdatera arbetsytan"
+              title="Uppdatera arbetsytan"
+            >
+              <RefreshCw size={16} />
+            </Button>
+          )}
+        </header>
+        <nav className="view-navigation" aria-label="Arbetsvyer">
+          {layers.map((view) => (
+            <button
+              key={view.id}
+              onClick={() => navigate(view.id)}
+              aria-current={layer === view.id ? 'page' : undefined}
+            >
+              {view.name}
+            </button>
+          ))}
+        </nav>
+        <main className="workspace-main">
+          {layer !== 'overview' && (
+            <div className="section-title">
+              <div>
+                <span className="small-label">
+                  {snap?.space.title || 'CivOS'} / {title}
+                </span>
+                <h1>{title}</h1>
+                <p>
+                  {snap?.space.purpose ||
+                    'Samla underlag. Pröva perspektiv. Följ besluten.'}
+                </p>
+              </div>
+            </div>
+          )}
           {error && (
             <div role="alert" className="message error">
               <span>{error}</span>
@@ -526,32 +484,34 @@ export default function Home() {
             <output>Läser arbetsytor…</output>
           ) : (
             <>
-              <div className="workspace-controls">
-                {snap && (
-                  <>
-                    <Picker
-                      value={caseId}
-                      change={setCase}
-                      options={[
-                        { id: 'all', label: 'Alla ärenden' },
-                        ...cases.map((e) => ({
-                          id: e.id,
-                          label: String(e.data.title),
-                        })),
-                      ]}
-                      label="Ärende"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => run(refresh)}
-                      disabled={busy}
-                      aria-label="Uppdatera"
-                    >
-                      <RefreshCw size={16} />
-                    </Button>
-                  </>
-                )}
-              </div>
+              {layer !== 'overview' && (
+                <div className="workspace-controls">
+                  {snap && (
+                    <>
+                      <Picker
+                        value={caseId}
+                        change={setCase}
+                        options={[
+                          { id: 'all', label: 'Alla ärenden' },
+                          ...cases.map((e) => ({
+                            id: e.id,
+                            label: String(e.data.title),
+                          })),
+                        ]}
+                        label="Ärende"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => run(refresh)}
+                        disabled={busy}
+                        aria-label="Uppdatera"
+                      >
+                        <RefreshCw size={16} />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
               {!spaces.length ? (
                 <section className="welcome-card">
                   <div className="welcome-icon">
@@ -559,7 +519,7 @@ export default function Home() {
                   </div>
                   <div>
                     <span className="small-label">DIN FÖRSTA ARBETSYTA</span>
-                    <h2>Initiera en arbetsyta.</h2>
+                    <h2>Skapa en arbetsyta.</h2>
                     <p>
                       Avgränsa en fråga. Registrera underlag, pröva påståenden
                       och följ beslut genom en versionerad historik.
@@ -570,20 +530,6 @@ export default function Home() {
                     >
                       Skapa arbetsyta <ArrowRight />
                     </Button>
-                    <div
-                      className="welcome-steps"
-                      aria-label="Arbetets tre steg"
-                    >
-                      <span>
-                        <BookOpen size={17} /> Samla underlag
-                      </span>
-                      <span>
-                        <Compass size={17} /> Pröva perspektiv
-                      </span>
-                      <span>
-                        <CircleCheck size={17} /> Följ besluten
-                      </span>
-                    </div>
                   </div>
                 </section>
               ) : !snap ? (
@@ -623,246 +569,25 @@ export default function Home() {
                       onOpen={openDocument}
                     />
                   ) : layer === 'overview' ? (
-                    <>
-                      <SystemMap
-                        snapshot={snap}
-                        caseId={caseId}
-                        selected={detail?.id || graphFocus}
-                        onOpen={openDocument}
-                        onCoordinate={() => navigate('coordinate')}
-                      />
-                      <div className="overview-caption">
-                        <span className="small-label">LÄGET I ARBETSYTAN</span>
-                        <span>{current.length} aktuella poster</span>
-                      </div>
-                      <div className="metric-grid">
-                        {[
-                          {
-                            label: 'Granskade observationer',
-                            value: snap.statistics.reviewed,
-                            total: snap.statistics.observations,
-                            note: 'Minst en registrerad bedömning',
-                            icon: ShieldCheck,
-                            tone: 'violet',
-                          },
-                          {
-                            label: 'Uppföljda förfallna beslut',
-                            value: snap.statistics.followed,
-                            total: snap.statistics.due,
-                            note: 'Beslut med passerat uppföljningsdatum',
-                            icon: CircleCheck,
-                            tone: 'mint',
-                          },
-                          {
-                            label: 'Kända källursprung',
-                            value: snap.statistics.originGroups,
-                            total: null,
-                            note: `${snap.statistics.sources} källor · ${snap.statistics.unknownOrigins} med okänt ursprung`,
-                            icon: BookOpen,
-                            tone: 'sand',
-                          },
-                        ].map(
-                          ({ label, value, total, note, icon: Icon, tone }) => (
-                            <article className="metric" key={label}>
-                              <div className="metric-heading">
-                                <span>{label}</span>
-                                <span className={'metric-icon ' + tone}>
-                                  <Icon size={18} />
-                                </span>
-                              </div>
-                              <strong>
-                                {value}
-                                {total !== null && <span> / {total}</span>}
-                              </strong>
-                              <small>{note}</small>
-                            </article>
-                          ),
-                        )}
-                      </div>
-                      <div className="section-bar">
-                        <h2>
-                          Dina ärenden{' '}
-                          <span className="section-count">
-                            {
-                              cases.filter(
-                                (e) => caseId === 'all' || caseId === e.id,
-                              ).length
-                            }
-                          </span>
-                        </h2>
-                        <span className="section-hint">
-                          Öppna ett ärende för att läsa vidare
-                        </span>
-                      </div>
-                      {cases.length === 0 ? (
-                        <div className="empty">
-                          <span className="empty-icon">
-                            <FolderOpen size={24} />
-                          </span>
-                          <h3>Vilken fråga ska ni undersöka?</h3>
-                          <p>
-                            Ett ärende avgränsar fråga, sammanhang, tid och
-                            berörda grupper.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="case-grid">
-                          {cases
-                            .filter((e) => caseId === 'all' || caseId === e.id)
-                            .map((e) => (
-                              <button
-                                key={e.id}
-                                className="case-card"
-                                onClick={() => {
-                                  setCase(e.id);
-                                  openDocument(e);
-                                }}
-                              >
-                                <div className="case-card-top">
-                                  <span className="case-symbol">
-                                    <FolderOpen size={19} />
-                                  </span>
-                                  <span className="case-domain">
-                                    {String(e.data.domain)}
-                                  </span>
-                                  <ArrowUpRight size={17} />
-                                </div>
-                                <h3>{String(e.data.title)}</h3>
-                                <p>{String(e.data.question)}</p>
-                                <div className="card-foot">
-                                  <span>
-                                    <FileText size={14} />
-                                    {
-                                      current.filter((x) => x.caseId === e.id)
-                                        .length
-                                    }{' '}
-                                    kopplade poster
-                                  </span>
-                                  <span className="case-open">
-                                    Öppna <ArrowRight size={14} />
-                                  </span>
-                                </div>
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                      <div className="journey-actions">
-                        {[
-                          { k: 'source', icon: BookOpen },
-                          { k: 'frame', icon: Compass },
-                          { k: 'actor', icon: Users },
-                          { k: 'option', icon: GitBranch },
-                          { k: 'outcome', icon: CircleCheck },
-                        ].map(({ k, icon: Icon }) => (
-                          <Button
-                            key={k}
-                            variant="outline"
-                            onClick={() => {
-                              navigate(kinds[k].layer);
-                              if (canKind(k)) newEntry(k);
-                            }}
-                          >
-                            <Icon size={16} />
-                            <span>{kinds[k].plural}</span>
-                            {canKind(k) ? (
-                              <Plus size={14} />
-                            ) : (
-                              <ArrowRight size={14} />
-                            )}
-                          </Button>
-                        ))}
-                      </div>
-                      <div className="two-columns overview-panels">
-                        <section className="panel">
-                          <div className="panel-heading">
-                            <h2>Behöver uppmärksamhet</h2>
-                            <span className="panel-icon attention">
-                              <Eye size={17} />
-                            </span>
-                          </div>
-                          <div className="findings">
-                            {scopedFindings
-                              .slice(0, allFindings ? undefined : 5)
-                              .map((f, i) => (
-                                <button
-                                  key={i}
-                                  onClick={() =>
-                                    openDocument(byId.get(f.ids[0]) || null)
-                                  }
-                                >
-                                  <span className="attention">●</span>
-                                  <span>
-                                    <strong>{f.title}</strong>
-                                    <small>{f.detail}</small>
-                                  </span>
-                                  <ArrowRight size={15} />
-                                </button>
-                              ))}
-                          </div>
-                          {scopedFindings.length > 5 && (
-                            <Button
-                              variant="ghost"
-                              className="show-findings"
-                              onClick={() => setAllFindings(!allFindings)}
-                            >
-                              {allFindings
-                                ? 'Visa färre'
-                                : `Visa alla ${scopedFindings.length}`}{' '}
-                              <ArrowRight size={14} />
-                            </Button>
-                          )}
-                          {!scopedFindings.length && (
-                            <div className="panel-empty">
-                              <span className="quiet-check">
-                                <CircleCheck size={22} />
-                              </span>
-                              <strong>Inga avvikelser hittade</strong>
-                              <p>
-                                Enligt de kontroller som körts
-                                {caseId !== 'all' ? ' för det här ärendet' : ''}
-                                .
-                              </p>
-                            </div>
-                          )}
-                        </section>
-                        <section className="panel">
-                          <div className="panel-heading">
-                            <h2>Senaste händelser</h2>
-                            <span className="panel-icon">
-                              <Clock3 size={17} />
-                            </span>
-                          </div>
-                          <div className="timeline">
-                            {entries
-                              .filter(
-                                (e) =>
-                                  caseId === 'all' ||
-                                  !e.caseId ||
-                                  e.caseId === caseId,
-                              )
-                              .slice(-8)
-                              .reverse()
-                              .map((e) => (
-                                <button
-                                  key={e.id}
-                                  aria-label={String(e.data.title)}
-                                  onClick={() => openDocument(e)}
-                                >
-                                  <span className="event-dot" />
-                                  <span>
-                                    <strong>{String(e.data.title)}</strong>
-                                    <small>
-                                      {kinds[e.kind].label} ·{' '}
-                                      {date(e.createdAt)}
-                                      {e.supersedes ? ' · revision' : ''}
-                                    </small>
-                                  </span>
-                                </button>
-                              ))}
-                          </div>
-                        </section>
-                      </div>
-                    </>
+                    <CaseWorkbench
+                      key={sid + ':' + caseId}
+                      snapshot={snap}
+                      caseId={caseId}
+                      selected={detail?.id}
+                      canCreate={canKind}
+                      onChoose={(id) => {
+                        setCase(id);
+                        openDocument(null);
+                      }}
+                      onCreate={(entryKind, chosenCase) => {
+                        if (canKind(entryKind)) {
+                          setCase(chosenCase);
+                          setEditor({ kind: entryKind });
+                        }
+                      }}
+                      onOpen={openDocument}
+                      onNavigate={navigate}
+                    />
                   ) : (
                     <>
                       <div className="section-bar">
