@@ -1,122 +1,148 @@
-# CivOS: installationsguide från påstående till uppföljning
+# CivOS: installera och pröva hela arbetsflödet
 
 **Kris Ledel · September 2026**
 
-CivOS ska göra det möjligt att följa ett beslut hela vägen: från påståendet det bygger på, via underlag och bedömningar, till ansvarig person och dokumenterat utfall. Första steget går att köra lokalt. Du behöver Python, en kopia av repot och ett avgränsat exempel.
+Webbversionen av CivOS håller ihop underlag, perspektiv, granskning, överläggning, beslut, genomförande, utfall och ändringar av arbetsregler. Du arbetar i formulär i webbläsaren. Uppgifterna sparas på servern och kan granskas från andra konton med tilldelad åtkomst.
 
-Det som installeras är en prototyp för en beslutslogg. Den använder SQLite och Pythons standardbibliotek. Den kopplar ihop poster, kontrollerar deras struktur och skapar en läsbar rapport. Människor granskar underlagen, fattar besluten och genomför eventuella åtgärder. Inget i programmet ger någon mandat att agera.
+Den här guiden gäller webbversionen i katalogen `web/`. Python-programmet i `civos/` är den tidigare prototypen 0.2. Dess kommandon skapar en lokal beslutslogg och en HTML-rapport. De startar inte webbversionen, och dess JSON-export kan inte importeras direkt här.
 
-Den större forskningsfrågan är om bättre spårbarhet kan göra institutioner bättre på att upptäcka och rätta sina misstag. Den frågan avgörs genom jämförelser i praktiken. En lyckad installation besvarar den inte.
+## 1. Installera beroenden, nyckel och databas
 
-## 1. Börja med rätt förväntningar
-
-Prototypen har fem typer av poster: `claim`, `evidence`, `assessment`, `decision` och `outcome`. De motsvarar påstående, underlag, bedömning, beslut och utfall. Varje typ har en bestämd roll. Ett underlag beskriver en källa och dess begränsningar. En bedömning förklarar hur underlaget påverkar ett påstående. Ett beslut anger vad någon valt att göra och varför.
-
-Programmet erbjuder ingen inloggning, behörighetsmodell, distribuerad drift eller automatisk faktakontroll. Det har ingen funktion för att radera en enskild känslig uppgift ur hela historiken. Börja därför med det syntetiska exemplet. Använd inte identifierande vittnesmål, privata handlingar eller material som deltagarna inte har rätt att dela.
-
-Namnen och datumen i en post är registrerade uppgifter. Programmet kan inte bevisa vem som skrev dem eller när en verklig händelse inträffade. Att en post accepteras betyder att den klarar programmets kontroller, inte att innehållet är sant.
-
-## 2. Hämta och kontrollera miljön
-
-Du behöver Python 3.10 eller senare med stöd för SQLite. Om Git finns installerat kan du hämta källkoden så här:
+Du behöver Node.js 22.13 eller senare. Hämta den version av [repot](https://github.com/krisledel/civos) som innehåller `web/`, eller packa upp leveranspaketet. Öppna en terminal i repots rot och kör:
 
 ```sh
-git clone https://github.com/krisledel/civos.git
-cd civos
-python --version
+node --version
+cd web
+npm ci
+npm run setup:key
+npm run db:migrate
+npm run dev
 ```
 
-Det går också att ladda ned repot som ZIP från [GitHub](https://github.com/krisledel/civos), packa upp det och öppna en terminal i den uppackade katalogen. Kör resten av kommandona därifrån.
+`npm ci` installerar versionerna i låsfilen. `setup:key` skapar en privat Ed25519-nyckel i JWK-format som värde för `CIVOS_SIGNING_KEY` i `web/.dev.vars`. Nyckeln används av servern när den signerar exportpaket. Den privata nyckeln ska stanna där; exporten innehåller den publika nyckeln.
 
-På vissa system heter kommandot `python3`. På Windows kan `py -3` fungera om Python-startaren är installerad. Kontrollera versionen och använd samma kommando genom hela guiden. Någon installation med `pip` behövs inte; prototypen har inga externa Python-beroenden.
+`.dev.vars` är en lokal, ignorerad fil. Lägg den inte i versionshantering, klientkod eller ett delat paket. Behåll samma nyckel när du vill att en lokal installation ska ha samma fingeravtryck över tid. Ett avsiktligt nyckelbyte ger ett nytt fingeravtryck som mottagare behöver kontrollera.
 
-Kör testerna innan du börjar:
+`db:migrate` kör migrationerna mot den lokala D1-databasen genom `wrangler.local.json` och bindningen `DB`. Kommandot använder lokal drift. Bilagor lagras genom bindningen `ATTACHMENTS`. Lokal databas och objektlagring är utvecklingsmiljöns data, inte en kopia av en publicerad installation.
+
+Öppna adressen som `dev` skriver ut och använd sidans inloggning. Utvecklingsmiljön ger en lokal testidentitet. En privat publicering använder värdplattformens inloggning. Exponera inte utvecklingsservern som en publik tjänst; den lokala testidentiteten är inte en produktionsinloggning.
+
+Kontrollera även typningen och produktionsbygget från `web/`:
 
 ```sh
-python -m unittest discover -s tests -v
+npm run typecheck
+npm run build
 ```
 
-Om ett test misslyckas, spara felmeddelandet tillsammans med Python-version och operativsystem. Gå tillbaka till grundfelet innan du tolkar programmets rapport som tillförlitlig. Testerna kontrollerar programbeteende. De visar inte att metoden förbättrar beslut i en organisation.
+En installation utan `CIVOS_SIGNING_KEY` kan inte skapa signerade exporter. Ett fel om saknade tabeller betyder att den lokala databasen behöver rätt migrationer. Spara felmeddelandet och åtgärda grundfelet innan du fortsätter provkörningen.
 
-## 3. Kör det fiktiva fallet
+## 2. Skapa arbetsytan och förstå åtkomsten
 
-Skapa demodatabasen och kontrollera dess historik. Demot kräver en tom databas; välj en ny sökväg efter `--db` om du redan har kört det:
+Skapa en arbetsyta med ett tydligt syfte, exempelvis ”Pröva en extra öppenkväll i föreningsverkstaden”. Kontot som skapar arbetsytan blir ägare. En första arbetsregel skapas med krav på ett granskarkonto, inga obligatoriska grupper och 30 dagar som högsta uppföljningstid.
 
-```sh
-python -m civos --db work/demo.sqlite3 demo
-python -m civos --db work/demo.sqlite3 verify
-```
+Det finns fyra kontoroller:
 
-Demot bygger på filen `examples/water-review.json`. Alla aktörer, observationer och resultat är påhittade. Fallet gäller en planerad inspektion av en vägtrumma och en tillfällig passage för närboende. Det är varken en verklig översvämningsprognos eller ett besked om någon anläggnings säkerhet.
+| Roll | Vad kontot kan göra |
+| --- | --- |
+| Ägare | Hantera innehåll, regler, inbjudningar, åtkomst och nodtillit. Revidera egna och andras poster med historiken bevarad. |
+| Redaktör | Registrera innehåll och regelförslag samt revidera egna poster. |
+| Granskare | Registrera bedömningar, argument och utfall samt revidera egna sådana poster. |
+| Läsare | Läsa och exportera innehållet utan att ändra den ursprungliga arbetsytan. |
 
-Ett ritningsunderlag stöder påståendet att trumman har tillräcklig kapacitet under givna antaganden. Ett boendeunderlag beskriver vatten som dämts upp och skräp vid inloppet. Bedömningarna skiljer sig åt. Inspektionsbeslutet behåller invändningen om att ritningen inte visar det aktuella tillståndet.
+Ägaren kan skapa en inbjudningskod till en av de tre andra rollerna. Koden gäller i 24 timmar och kan användas en gång. Ge koden till den avsedda deltagaren genom en kanal ni redan använder.
 
-Ett separat påstående gäller möjligheten att hålla en passage öppen. En genomgång av sträckan är inte tillräcklig för att fastställa att lösningen fungerar för alla berörda. Beslutet kräver därför återkoppling från de boende före tidsbokningen.
+En deltagarpost är något annat än ett konto. Den beskriver namn, roll, grupper, kunskapsområden och intressen. Namnet i posten ger ingen behörighet. När en bedömning registreras sparas också vilket inloggat konto som skrev den. Det är de registrerande kontona som räknas i beslutsregelns granskningskrav.
 
-Det dokumenterade inspektionsutfallet är ofullständigt: inloppet var delvis blockerat, men kapaciteten kunde inte fastställas. Återkopplingen om passagen saknar utfall trots passerat granskningsdatum. Dessa luckor är avsiktliga. Prototypen ska kunna visa att något återstår.
+## 3. Registrera ett syntetiskt ärende genom alla lager
 
-## 4. Läs rapporten som en granskare
+Använd följande konstruerade fall. Det gör ingen utsaga om en verklig förening:
 
-Skapa rapporten med en bestämd tidpunkt för bedömning av granskningsdatumen:
+> Fjorton av tjugo svarande medlemmar vill ha öppet på tisdag 18–20. Två volontärer kan bemanna ett provtillfälle. Gruppen överväger att prova en kväll, med målet minst tolv faktiska besökare.
 
-```sh
-python -m civos --db work/demo.sqlite3 report --as-of 2026-09-08T12:00:00Z --output work/report.html
-```
+Skapa ärendet och ange ”Medlemmar” och ”Volontärer” som berörda grupper. Lägg till en deltagarpost för vardera gruppen. Ange att personerna och uppgifterna är testdata.
 
-Öppna `work/report.html` i en webbläsare. Rapport- och exportkommandona skriver inte över befintliga filer; välj ett nytt utfilnamn när du kör dem igen. Rapporten är en lokal fil; kommandot publicerar ingen webbplats. Den angivna tidpunkten gör datumkontrollen reproducerbar. Den är inte ett bevis på när en observation gjordes och innebär inte att du har återskapat hela databasens historiska tillstånd vid den tidpunkten.
+Skapa två perspektiv. Det första beskriver medlemmarnas tillgång till lokalen och använder enkätsvar. Det andra beskriver möjlig bemanning och använder volontärernas schema. Ange för båda vad metoden kan visa och vad den inte fångar.
 
-Försök besvara följande utan att läsa programkoden:
+Lägg till begreppen ”önskad öppettid” och ”bemanningsbar öppettid” i respektive perspektiv. Skapa en överlappande relation mellan dem, begränsad till försöksveckan. Skriv uttryckligen att önskemål inte är bindande anmälningar och att bemanning inte garanterar besök.
 
-- Vilket påstående bygger inspektionsbeslutet på?
-- Vilket underlag talar emot det, och vilken begränsning gäller ritningen?
-- Vem ansvarar för nästa steg?
-- Vad visade inspektionen, och vad kunde den inte avgöra?
-- Vilken återkoppling saknas trots att granskningsdatumet passerat?
+Skapa sedan två källor: en syntetisk enkät och ett syntetiskt bemanningsschema. Adresserna kan vara `urn:civos:test:verkstad:enkat` och `urn:civos:test:verkstad:bemanning`. Ge dem olika gemensamt ursprung eftersom de beskriver olika testunderlag. Om du lägger till flera kopior av samma enkät ska kopiorna ha samma ursprung.
 
-Om rapporten gör någon av dessa frågor onödigt svår har du hittat ett konkret förbättringsbehov. Ett snyggt dokument är inte tillräckligt. En granskare måste kunna hitta den invändning som faktiskt påverkar beslutet.
+Registrera observationerna med rätt källa och perspektiv. Ange tid, plats och osäkerhet. En mätuppgift, en tolkning, en prognos och en värdering har olika kategorier. Använd den kategori som motsvarar vad ni faktiskt påstår.
 
-Läs också skillnaden mellan ett registrerat utfall och ett uppnått mål. Att det finns en uppföljningspost betyder att någon har återkommit med information. Informationen kan fortfarande vara osäker, negativ eller otillräcklig. Att inget utfall finns ska inte tolkas som att allt gick enligt plan.
+## 4. Låt granskningsregeln prövas
 
-## 5. Exportera och kontrollera en kopia
+Registrera alternativet ”Genomför ett provtillfälle”. Koppla det till båda observationerna. Ange nyttan med att mäta verklig närvaro, kostnaden om fyra volontärtimmar och att försöket upphör efter den enda kvällen.
 
-Exporten gör historiken möjlig att flytta och granska utanför den ursprungliga databasen:
+Försök registrera ett beslut innan observationerna har granskats. Det ska avvisas. Granska sedan varje observation och ange metod, slutsats, underlag, intressen och reservationer. En granskare kan stödja att enkäten återges korrekt och samtidigt vara osäker på vad den säger om faktisk närvaro.
 
-```sh
-python -m civos --db work/demo.sqlite3 export --output work/ledger.json
-python -m civos --db work/copy.sqlite3 restore work/ledger.json
-python -m civos --db work/copy.sqlite3 verify
-```
+Om ni prövar en regel med två granskarkonton måste två separata konton registrera en bedömning av varje observation i alternativets kunskapsgrund. Två olika deltagarnamn inmatade från samma konto räcker inte. Två konton bevisar i sin tur inte att granskarna är oberoende personer eller sakkunniga; detta behöver bedömas i arbetsformen.
 
-Använd en ny databas för återställningen. Behåll originalet medan du kontrollerar kopian. En export innehåller loggens uppgifter; att dela den kan därför avslöja allt du tidigare har matat in. Det finns ingen automatisk bedömning av vad en mottagare bör få se.
+Lägg in ett argument från medlemmarna för försöket och ett villkor från volontärerna: inget automatiskt återkommande öppethållande. Om arbetsregeln kräver dessa grupper ska beslutet avvisas tills argument från båda har registrerats. Representationskontrollen använder den grupp som den angivna deltagaren uppges företräda. Programmet kontrollerar inte personens mandat från gruppen.
 
-Varje lagrad post ingår i en kedja av SHA-256-hashar. En ändring som gör kedjan inkonsekvent kan upptäckas av verifieringen. För att kontrollera att kopian motsvarar en tidigare känd historik behöver du dessutom spara kedjans slutvärde, dess `head`, på en oberoende plats. Vid verifiering kan du ange `--expected-head` följt av det sparade värdet.
+En bedömning med ”invänder” eller ”osäkert” försvinner inte när ett beslut registreras. Kravet gäller dokumenterad granskning. Det innebär inte att alla måste ha samma slutsats.
 
-Den jämförelsen gäller det förväntade slutvärdet för samma historik. Nya, legitima poster ger ett nytt slutvärde. En avvikelse är därför något att undersöka, inte automatiskt bevis på manipulation.
+## 5. Fatta beslutet och registrera utfallet
 
-Den som kontrollerar databasen kan skriva om hela historiken och räkna om hashkedjan. Utan en oberoende kontrollpunkt kan en sådan omskrivning klara den interna verifieringen. En kontrollpunkt på samma dator har dessutom flera av databasens sårbarheter. Hashkedjan bevisar varken sanningshalt, identitet eller legitim beslutsrätt.
+Välj provtillfället som alternativ och ange en ansvarig deltagare. Beskriv vilket mandat som påstås ge arbetsgruppen rätt att ordna försöket. Motivera beslutet med den kvarstående osäkerheten synlig.
 
-## 6. Skapa ett eget avgränsat exempel
+Ange ett framtida uppföljningsdatum, exempelvis om sju dagar. Sätt indikatorn till ”Antal unika besökare”, målvillkoret till ”minst”, målvärdet till `12` och enheten till `personer`. Skriv ett stoppvillkor: försöket ställs in om färre än två volontärer kan bemanna det. Välj den aktuella arbetsregeln.
 
-Utgå från demofilens struktur och den [tekniska beskrivningen i repot](https://github.com/krisledel/civos/blob/main/technical-overview.md). Kopiera exemplet till en egen JSON-fil i `work/` och byt till ett annat fiktivt fall. Behåll sambanden mellan posternas identifierare. Håll isär observation, tolkning och beslut även om samma person skriver alla tre.
+Skapa en åtgärd med ansvarig, sista datum och status. I ett syntetiskt test kan du därefter registrera ett konstruerat utfall på `8` personer med en egen källa. Mättidpunkten måste ligga efter det registrerade beslutet. Enheten ska vara exakt `personer` även här.
 
-För att lägga in repots oförändrade exempelfil direkt i en ny databas kan du använda:
+Kontrollera att översikten visar att målet inte är uppnått. Revidera åtgärdens status till klar och ange var uppföljningen finns. Att åtgärden är genomförd gör inte målet uppnått. Att utfallet ligger under målet bevisar inte varför det gjorde det.
 
-```sh
-python -m civos --db work/manual.sqlite3 append examples/water-review.json
-```
+## 6. Ändra regeln med erfarenheten som underlag
 
-Byt sökvägen till din egen fil när den är klar. Använd en ny databas när du vill pröva ett separat exempel. För att rätta en redan accepterad post lägger du till en ny post med `supersedes`, enligt dokumentationen. Den gamla posten finns kvar. Historiska hänvisningar ska fortfarande visa vilket underlag ett tidigare beslut faktiskt använde.
+Skapa ett ändringsförslag kopplat till beslutet och utfallet. Beskriv problemet: uttryckt intresse användes för att bedöma faktisk närvaro. Föreslå att framtida ärenden redovisar enkätsvar och bekräftade anmälningar separat. Ange önskat antal granskarkonton, obligatoriska grupper och högsta uppföljningstid.
 
-Formulera ett beslut som går att följa upp. Ange ansvarig person, alternativ, kvarstående invändning, granskningsdatum, framgångskriterium och stoppvillkor. Beskriv också det faktiska mandatet i beslutsmotiveringen. Den uppgiften måste kontrolleras utanför programmet.
+Ägaren kan anta eller avslå förslaget med en motivering. Ett antagande skapar både regelbeslutet och en ny version av arbetsregeln. Kontrollera att ett nytt beslut kräver den nya versionen. Det första beslutet ska fortfarande visa regeln som gällde när det registrerades.
 
-## 7. Pröva nyttan mot det ni redan använder
+Rättelser görs genom revision. En ny post hänvisar till föregångaren med `supersedes`. Den gamla posten finns kvar, och tidigare hänvisningar ändras inte. När en observation revideras ska den som granskar ett äldre beslut kunna se att dess underlag har förändrats.
 
-En pilot behöver en jämförelse. Välj ett frivilligt, reversibelt ärende med små konsekvenser. Börja med konstruerade fall och jämför CivOS med era nuvarande anteckningar eller kalkylblad. Låt deltagarna använda båda metoderna på jämförbara fall och variera ordningen så att övningseffekten blir synlig.
+## 7. Exportera, importera och fortsätt lokalt
 
-Bestäm i förväg vilken förbättring som skulle motivera extra arbete och vad som ska avbryta försöket. Mät hur lång tid en utomstående granskare behöver för att återfinna beslutsunderlaget, hur många svar som blir rätt och om invändningen och den senaste rättelsen upptäcks. Räkna också tiden för registrering, kontroll och korrigering. Redovisa saknade utfall och fel med tydliga nämnare.
+Exportera arbetsytan till en signerad JSON-fil. Paketet innehåller posthistoriken och uppgifter om nod, arbetsyta, exporttid, hashkedjans slutvärde, publik nyckel och signatur. Nodens privata nyckel följer inte med. Signaturen avser nodens exportkuvert, inte personliga signaturer från deltagarna.
 
-Be deltagarna bedöma om deras bidrag återges rätt och om de faktiskt kan invända. Dokumentera vilka som inte deltog och varför, när den uppgiften kan samlas in utan att utsätta någon. En välfylld logg säger inget i sig om vem som fick inflytande.
+Importera filen utan att ändra innehåll eller formatering. Mottagaren kontrollerar format, publik nyckel, fingeravtryck, Ed25519-signatur, posternas hashkedja och hänvisningar. En godkänd import skapar en separat skrivskyddad gren med den mottagna historiken.
 
-Om vanliga anteckningar fungerar lika bra till lägre kostnad har CivOS inte visat nytta i den miljön. Om formatet döljer väsentliga invändningar eller försvårar rättelser måste arbetsformen ändras eller försöket avslutas. Det finns ännu inga uppmätta pilotvinster att hänvisa till.
+Jämför nyckelns fingeravtryck med avsändaren genom en separat känd kanal om du behöver fastställa vem avsändaren är. En giltig signatur säger att motsvarande nyckel har signerat paketet. Den säger inte att innehållet är sant, att organisationen har mandat eller att granskningen varit oberoende. Arbetsytans ägare kan dokumentera erkända och återkallade nycklar med sakområde och motivering.
 
-Nästa bidrag bör därför vara ett reproducerbart fel, en bättre granskningsfråga eller ett redovisat jämförelseresultat. [Källkoden och bidragsguiden finns på GitHub](https://github.com/krisledel/civos). Börja där beslutets skäl går förlorade, och kontrollera om de faktiskt blir lättare att återfinna.
+Skapa en lokal fortsättning av importen när du vill arbeta vidare. Den får egen åtkomst och en lokal arbetsregel. Importerade behörigheter följer inte med. Registrera lokala bedömningar före nya beslut; tidigare importerade bedömningar uppfyller inte automatiskt den nya grenens lokala granskningskrav. Försök fatta ett beslut innan lokal granskning finns och kontrollera att det avvisas.
+
+Exporter innehåller poster, inte bilagefiler, medlemsbehörigheter eller nodtillitsregister. En importerad källa kan därför visa en bilagereferens utan att filen finns på den nya noden. Dela nödvändiga filer separat, jämför deras SHA-256-värden och registrera den lokala tillgången till dem. Exporten är inte en fullständig driftbackup.
+
+Grenarna förblir separata. CivOS synkroniserar dem inte automatiskt och avgör inte vilken gren som har rätt. Nya uppgifter, konflikter och fortsatt samarbete kräver lokal granskning och nya överföringar.
+
+## Posttyperna i installationen
+
+| Post | Användning |
+| --- | --- |
+| `case` | Avgränsa frågan, sammanhanget och berörda grupper. |
+| `actor` | Beskriva deltagare, uppdrag, grupper och intressen. |
+| `source` | Registrera källa, metod, ursprung, begränsningar och bilagereferens. |
+| `observation` | Skriva uppgiften med kategori, underlag, perspektiv och osäkerhet. |
+| `frame` | Beskriva ett perspektivs metod, antaganden och begränsningar. |
+| `concept` | Definiera ett begrepp inom ett perspektiv. |
+| `mapping` | Relatera två begrepp med omfattning, förlust och motivering. |
+| `assessment` | Granska en observation, begreppsrelation, ett alternativ eller utfall. |
+| `option` | Beskriva handlingsalternativets grund, nytta, kostnader och reversibilitet. |
+| `argument` | Dokumentera stöd, motstånd eller villkor för ett alternativ. |
+| `decision` | Registrera val, ansvar, mandat, osäkerhet, mål och regelversion. |
+| `task` | Följa genomförande, ansvarig, tidsfrist och status. |
+| `outcome` | Registrera mätvärde, underlag, begränsningar och nästa steg. |
+| `policy` | Ange arbetsregeln och dess procedurkrav. |
+| `rule_change` | Föreslå en regeländring utifrån konkreta erfarenheter. |
+| `rule_resolution` | Anta eller avslå ändringsförslaget med motivering. |
+
+Fält och validering definieras i `web/lib/model.ts`. Lagring, kontroller av behörighet och lokala grenar finns i `web/lib/store.ts`; paketets signering och verifiering finns i `web/lib/bundles.ts`.
+
+## Vad provkörningen visar
+
+Provkörningen visar om hela flödet går att genomföra och om avsedda begränsningar fungerar. Den visar inte att CivOS förbättrar besluten i en verklig organisation. För det behövs en jämförelse med det arbetssätt ni redan använder.
+
+Låt någon som inte skrev besluten återfinna underlag, invändning, ansvarig, senaste revision, mål och utfall. Mät både träffsäkerhet och tid. Räkna även kostnaden för registrering och granskning. Dokumentera om deltagare kunde invända och om någon berörd grupp saknades.
+
+Ett legitimt mandat, faktasanning och decentraliserad konsensus uppstår inte automatiskt i en databas. CivOS gör det möjligt att dokumentera och pröva sådana anspråk. Människorna och organisationerna som använder systemet ansvarar för vad de betyder i praktiken.
+
+
+Driftgränser: högst 1 900 poster och 1,5 MB kanonisk posthistorik per arbetsyta, 2 MB per överföringsfil och 5 MB per bilaga. Ärenden har beständiga ID:n och kan inte revideras. Vidareexport av en skrivskyddad import bevarar originalkuvert och signatur. En lokal fortsättning exporterar signerade ursprungsuppgifter: basens slutvärde och sekvens, ursprungsnod, nyckelfingeravtryck och originalkuvertets hash. Originalkvittot bevaras lokalt.

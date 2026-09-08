@@ -1,3 +1,5 @@
+> This protocol describes the CivOS 0.2 CLI pilot. For the complete web workflow, see ../articles/civos-installationsguide.md.
+
 # A test that CivOS can fail
 
 **Question:** Does an explicit record of claims, evidence, dissent and follow-up make a small group's decisions easier to inspect and correct, at an acceptable administrative cost?

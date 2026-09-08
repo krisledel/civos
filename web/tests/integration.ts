@@ -1,0 +1,504 @@
+/* oxlint-disable typescript/no-explicit-any -- test assertions intentionally exercise malformed external JSON. */
+import assert from 'node:assert/strict';
+import {
+  canonical,
+  validate,
+  verifyEntries,
+  digest,
+  type Entry,
+} from '../lib/model';
+import { verifyBundle } from '../lib/bundles';
+const base = process.env.CIVOS_TEST_URL || 'http://localhost:3000';
+if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))
+  throw Error('Integration tests require a local server.');
+const headers = {
+  'Content-Type': 'application/json',
+  Origin: base,
+  Cookie: '__sites_local_auth=1',
+};
+let checks = 0;
+const ok = (condition: unknown, message: string) => {
+  assert.ok(condition, message);
+  checks++;
+};
+async function post(data: unknown, status = 201) {
+  const r = await fetch(base + '/api/civos', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  const b = (await r.json()) as any;
+  assert.equal(r.status, status, JSON.stringify(b));
+  checks++;
+  return b;
+}
+async function state(space: string) {
+  const r = await fetch(base + '/api/civos?space=' + space, { headers });
+  assert.equal(r.status, 200);
+  return (await r.json()) as any;
+}
+const unauth = await fetch(base + '/api/civos');
+ok(unauth.status === 401, 'Unauthenticated reads must fail');
+const csrf = await fetch(base + '/api/civos', {
+  method: 'POST',
+  headers: { ...headers, Origin: 'https://foreign.test' },
+  body: '{}',
+});
+ok(csrf.status === 403, 'Cross-origin writes must fail');
+const created = await post({
+  action: 'create',
+  title: 'Syntetiskt test · föreningsverkstad',
+  purpose:
+    'Verifiering av hela arbetsflödet. Samtliga personer, uppgifter och utfall är konstruerade testdata.',
+});
+let sid = created.id,
+  head = (await state(sid)).space.head;
+const policy = (await state(sid)).entries[0];
+async function add(
+  kind: string,
+  data: unknown,
+  caseId: string | null = null,
+  supersedes: string | null = null,
+) {
+  const b = await post({
+    action: 'append',
+    space: sid,
+    head,
+    proposal: { kind, data, caseId, supersedes },
+  });
+  head = b.added.at(-1).hash;
+  return b.added[0];
+}
+const c = await add('case', {
+  title: 'Extra öppenkväll — testärende',
+  question: 'Ska verkstaden pröva en extra kväll?',
+  domain: 'Föreningsverksamhet',
+  place: 'Fiktiva Verkstadshuset',
+  groups: ['Medlemmar', 'Volontärer'],
+  timeframe: 'Ett provtillfälle',
+});
+const a = await add('actor', {
+  title: 'Alva — testperson',
+  role: 'Medlemsrepresentant',
+  groups: ['Medlemmar'],
+  domains: ['Behov'],
+  interests: 'Vill ha fler öppettider.',
+});
+const frame = await add(
+  'frame',
+  {
+    title: 'Tillgång',
+    description: 'När lokalen kan användas.',
+    method: 'Enkät',
+    assumptions: ['Önskemål är inte åtaganden'],
+    scope: 'Testveckan',
+    limitations: 'Förutsäger inte närvaro.',
+    groups: ['Medlemmar'],
+  },
+  c.id,
+);
+const frame2 = await add(
+  'frame',
+  {
+    ...frame.data,
+    title: 'Bemanning',
+    description: 'När volontärer kan närvara.',
+    groups: ['Volontärer'],
+  },
+  c.id,
+);
+const con = await add(
+  'concept',
+  {
+    title: 'Önskad tid',
+    frameId: frame.id,
+    definition: 'Angivet önskemål.',
+    examples: 'Tisdag 18–20.',
+  },
+  c.id,
+);
+const con2 = await add(
+  'concept',
+  {
+    title: 'Bemanningsbar tid',
+    frameId: frame2.id,
+    definition: 'Två volontärer kan närvara.',
+    examples: 'Ett bekräftat åtagande.',
+  },
+  c.id,
+);
+await add(
+  'mapping',
+  {
+    title: 'Tid och åtagande',
+    fromId: con.id,
+    toId: con2.id,
+    relation: 'överlappande',
+    scope: 'Samma vecka',
+    loss: 'Önskemål och åtagande är olika.',
+    rationale: 'Tider kan sammanfalla.',
+  },
+  c.id,
+);
+const now = () => new Date().toISOString();
+const source = await add(
+  'source',
+  {
+    title: 'Syntetisk enkät',
+    uri: 'urn:civos:test:enkat',
+    method: 'Konstruerade svar',
+    capturedAt: now(),
+    originGroup: 'test-enkat',
+    limitations: 'Fiktiva uppgifter.',
+  },
+  c.id,
+);
+const observation = await add(
+  'observation',
+  {
+    title: '14 önskar öppet',
+    statement: '14 av 20 svarande önskar en extra kväll.',
+    category: 'observation',
+    sourceIds: [source.id],
+    frameId: frame.id,
+    observedAt: now(),
+    place: 'Fiktiva verkstaden',
+    uncertainty: 'Intresse innebär inte närvaro.',
+  },
+  c.id,
+);
+const option = await add(
+  'option',
+  {
+    title: 'Prova en kväll',
+    action: 'Öppna 18–20 och räkna besökare.',
+    basisIds: [observation.id],
+    benefits: 'Lärande om närvaro.',
+    costs: 'Fyra volontärtimmar.',
+    reversibility: 'Upphör efter tillfället.',
+  },
+  c.id,
+);
+const decisionData = {
+  title: 'Godkänn försöket',
+  optionId: option.id,
+  ownerId: a.id,
+  authority: 'Fiktivt mandat i testet.',
+  rationale: 'Begränsat reversibelt försök.',
+  dissent: 'Ingen fortsatt drift utan nytt beslut.',
+  reviewAt: new Date(Date.now() + 86400000 * 2).toISOString(),
+  metric: 'Unika besökare',
+  operator: 'minst',
+  target: 12,
+  unit: 'personer',
+  stopCondition: 'Avbryt utan bemanning.',
+  policyId: policy.id,
+};
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: { kind: 'decision', caseId: c.id, data: decisionData },
+  },
+  400,
+);
+const assessment = await add(
+  'assessment',
+  {
+    title: 'Pröva enkätens slutsats',
+    targetId: observation.id,
+    actorId: a.id,
+    frameId: frame.id,
+    verdict: 'osäkert',
+    rationale: 'Svar anger önskemål.',
+    method: 'Jämförelse med enkät',
+    independence: 'inte fastställt',
+    interests: 'Deltagarens intresse redovisat.',
+    evidenceIds: [source.id],
+  },
+  c.id,
+);
+await add(
+  'argument',
+  {
+    title: 'Pröva efterfrågan',
+    optionId: option.id,
+    actorId: a.id,
+    position: 'för',
+    reason: 'Ett tillfälle ger mätdata.',
+    referenceIds: [observation.id],
+  },
+  c.id,
+);
+const decision = await add('decision', decisionData, c.id);
+const task = await add(
+  'task',
+  {
+    title: 'Genomför och räkna',
+    decisionId: decision.id,
+    ownerId: a.id,
+    dueAt: decisionData.reviewAt,
+    status: 'pågår',
+    note: 'Syntetiskt försök.',
+  },
+  c.id,
+);
+const outcomeData = {
+  title: 'Åtta besökare',
+  decisionId: decision.id,
+  measuredAt: now(),
+  value: 8,
+  unit: 'personer',
+  method: 'Konstruerat räkneunderlag',
+  sourceIds: [source.id],
+  observation: 'Målet uppnåddes inte.',
+  limitations: 'Ett fiktivt tillfälle.',
+  nextAction: 'Begär bekräftade anmälningar.',
+};
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'outcome',
+      caseId: c.id,
+      data: { ...outcomeData, unit: 'timmar' },
+    },
+  },
+  400,
+);
+const outcome = await add('outcome', outcomeData, c.id);
+await add(
+  'task',
+  { ...task.data, status: 'klar', note: 'Resultatet har registrerats.' },
+  c.id,
+  task.id,
+);
+const change = await add('rule_change', {
+  title: 'Skärp uppföljning',
+  policyId: policy.id,
+  problem: 'Enkätsvar blev inte närvaro.',
+  proposal: 'Redovisa anmälningar separat från intresse.',
+  minReviews: 1,
+  requiredGroups: [],
+  reviewDays: 3,
+  basisIds: [decision.id, outcome.id],
+});
+await add('rule_resolution', {
+  title: 'Anta förslaget',
+  changeId: change.id,
+  verdict: 'antas',
+  rationale: 'Bevara lärdomen.',
+});
+let s = await state(sid);
+ok(
+  s.entries.filter((e: Entry) => e.kind === 'policy').length === 2,
+  'Adoption must append new policy atomically',
+);
+ok(
+  s.findings.some((f: any) => f.type === 'target'),
+  'Missed target must be visible',
+);
+ok(
+  s.entries.some((e: Entry) => e.id === task.id),
+  'Original task version must remain',
+);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: { kind: 'decision', caseId: c.id, data: decisionData },
+  },
+  409,
+);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: { kind: 'case', supersedes: c.id, data: c.data },
+  },
+  400,
+);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: { kind: 'constructor', data: {} },
+  },
+  400,
+);
+const good = {
+  action: 'append',
+  space: sid,
+  head,
+  proposal: { kind: 'actor', data: { ...a.data, title: 'Samtidighetstest' } },
+};
+const parallel = await Promise.all([
+  fetch(base + '/api/civos', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(good),
+  }),
+  fetch(base + '/api/civos', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(good),
+  }),
+]);
+ok(
+  parallel
+    .map((r) => r.status)
+    .sort((a, b) => a - b)
+    .join(',') === '201,409',
+  'Exactly one concurrent writer must succeed',
+);
+s = await state(sid);
+await verifyEntries(s.entries, s.space.head);
+checks++;
+const exportResponse = await fetch(
+  base + '/api/civos?space=' + sid + '&export=1',
+  { headers },
+);
+ok(exportResponse.status === 200, 'Export must succeed');
+const original = await exportResponse.text();
+await verifyBundle(original);
+checks++;
+const bad = JSON.parse(original);
+bad.payload.title = 'Changed';
+await assert.rejects(() => verifyBundle(canonical(bad)));
+checks++;
+const imported = await post({ action: 'import', envelope: original });
+const importedState = await state(imported.id);
+ok(importedState.space.read_only === 1, 'Imports are read-only');
+ok(
+  importedState.members.length === 1,
+  'Imported bundle must not grant remote roles',
+);
+await post(
+  {
+    action: 'append',
+    space: imported.id,
+    head: importedState.space.head,
+    proposal: { kind: 'actor', data: a.data },
+  },
+  403,
+);
+const forked = await post({ action: 'fork', space: imported.id });
+sid = forked.id;
+s = await state(sid);
+head = s.space.head;
+const localPolicy = s.entries.at(-1);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'decision',
+      caseId: c.id,
+      data: { ...decisionData, policyId: localPolicy.id },
+    },
+  },
+  400,
+);
+await add(
+  'assessment',
+  { ...assessment.data, title: 'Lokal omgranskning' },
+  c.id,
+);
+await add('decision', { ...decisionData, policyId: localPolicy.id }, c.id);
+const f = new FormData();
+f.set(
+  'file',
+  new File(['syntetiskt underlag'], 'underlag.txt', { type: 'text/plain' }),
+);
+const upload = await fetch(base + '/api/civos?space=' + sid, {
+  method: 'POST',
+  headers: { Origin: base, Cookie: headers.Cookie },
+  body: f,
+});
+const att = (await upload.json()) as any;
+ok(upload.status === 200, 'Attachment upload');
+const download = await fetch(
+  base + '/api/civos?space=' + sid + '&attachment=' + att.id,
+  { headers },
+);
+ok((await download.text()) === 'syntetiskt underlag', 'Attachment round trip');
+await add(
+  'source',
+  {
+    ...source.data,
+    title: 'Källa med bilaga',
+    artifactId: att.id,
+    artifactDigest: att.digest,
+  },
+  c.id,
+);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'source',
+      caseId: c.id,
+      data: { ...source.data, artifactId: att.id, artifactDigest: 'wrong' },
+    },
+  },
+  400,
+);
+const fake = structuredClone(s.entries[0]);
+fake.createdAt = 0;
+const { hash: _hash, ...body } = fake;
+fake.hash = await digest(canonical(body));
+await assert.rejects(() => verifyEntries([fake], fake.hash));
+checks++;
+assert.throws(() =>
+  validate(
+    {
+      kind: 'source',
+      caseId: c.id,
+      data: { ...source.data, capturedAt: '2026-02-31T00:00:00.000Z' },
+    },
+    [c],
+  ),
+);
+checks++;
+const emptyBefore = (await state(sid)).entries.length;
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'source',
+      caseId: c.id,
+      data: { ...source.data, uri: ' https://example.com' },
+    },
+  },
+  400,
+);
+ok(
+  (await state(sid)).entries.length === emptyBefore,
+  'Rejected writes cannot alter history',
+);
+console.log(
+  JSON.stringify(
+    {
+      checks,
+      fullWorkflow: 'passed',
+      signedExportImport: 'passed',
+      localReReview: 'passed',
+      concurrentAppend: 'passed',
+      attachments: 'passed',
+      workspace: created.id,
+    },
+    null,
+    2,
+  ),
+);
