@@ -8,25 +8,27 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { kinds, active, type Entry } from '@/lib/model';
 type Edge = { from: string; to: string; label: string };
 const palette: Record<string, string> = {
-  overview: '#c4b5fd',
-  observe: '#82b5e8',
-  frames: '#b69af1',
-  trust: '#6ec5ac',
-  decide: '#d6ad73',
-  outcomes: '#df92b7',
-  coordinate: '#a4a9c0',
+  overview: '#80e8f5',
+  observe: '#55c7ed',
+  frames: '#8c9bff',
+  trust: '#57d7ad',
+  decide: '#e4b66b',
+  outcomes: '#dba2ef',
+  coordinate: '#8da7b8',
 };
 export function RecordGraph({
   entries,
   selected,
   onOpen,
+  includeCases = false,
 }: {
   entries: Entry[];
   selected?: string;
   onOpen: (e: Entry) => void;
+  includeCases?: boolean;
 }) {
   const [query, setQuery] = useState(''),
-    [showCases, setShowCases] = useState(false),
+    [showCases, setShowCases] = useState(includeCases),
     [zoom, setZoom] = useState(1),
     [hover, setHover] = useState('');
   const graph = useMemo(() => {
@@ -145,7 +147,7 @@ export function RecordGraph({
       <div className="graph-toolbar">
         <div>
           <Network size={17} />
-          <strong>Kunskapens samband</strong>
+          <strong>Sambandsgraf</strong>
           <span>
             {graph.nodes.length} dokument · {graph.edges.length} länkar
           </span>
@@ -196,7 +198,13 @@ export function RecordGraph({
                   height="24"
                   patternUnits="userSpaceOnUse"
                 >
-                  <circle cx="1" cy="1" r=".7" fill="#4c4b5b" opacity=".32" />
+                  <path
+                    d="M 24 0 L 0 0 0 24"
+                    fill="none"
+                    stroke="#284957"
+                    strokeWidth="0.5"
+                    opacity=".4"
+                  />
                 </pattern>
                 <marker
                   id="arrowhead"
@@ -207,7 +215,7 @@ export function RecordGraph({
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#827690" />
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#608e9f" />
                 </marker>
               </defs>
               <rect
@@ -228,9 +236,9 @@ export function RecordGraph({
                       y1={a.y}
                       x2={b.x}
                       y2={b.y}
-                      stroke={lit ? '#b19be1' : '#60566f'}
-                      strokeWidth={lit ? 1.8 : 0.8}
-                      opacity={focus && !lit ? 0.16 : 0.55}
+                      stroke={lit ? '#71e2f4' : '#416c80'}
+                      strokeWidth={lit ? 2 : 1}
+                      opacity={focus && !lit ? 0.14 : 0.7}
                       markerEnd="url(#arrowhead)"
                     />
                     <title>
@@ -267,25 +275,47 @@ export function RecordGraph({
                     onBlur={() => setHover('')}
                     opacity={lit ? 1 : 0.25}
                   >
-                    <circle cx={n.x} cy={n.y} r={19} fill="transparent" />
                     <circle
                       cx={n.x}
                       cy={n.y}
-                      r={isSelected ? 11 : 7}
+                      r={22}
+                      fill={isSelected ? '#163544' : 'transparent'}
+                      stroke={isSelected ? color : 'transparent'}
+                      strokeWidth="1"
+                    />
+                    <circle
+                      cx={n.x}
+                      cy={n.y}
+                      r={isSelected ? 10 : 7}
                       fill={color}
-                      stroke={isSelected ? '#e5daff' : '#211e29'}
+                      stroke={isSelected ? '#dcfbff' : '#07151f'}
                       strokeWidth={isSelected ? 3 : 2}
                     />
                     <text
                       x={n.x}
-                      y={n.y + 25}
+                      y={n.y - 16}
                       textAnchor="middle"
-                      fill={isSelected ? '#f1eaff' : '#c1becb'}
-                      fontSize="11"
+                      className="graph-node-seq"
+                      fill={color}
+                      fontSize="12"
                     >
-                      {String(n.entry.data.title).slice(0, 25)}
-                      {String(n.entry.data.title).length > 25 ? '…' : ''}
+                      {String(n.entry.seq).padStart(3, '0')}
                     </text>
+                    {(graph.nodes.length <= 22 || (focus && lit)) && (
+                      <text
+                        x={n.x}
+                        y={n.y + 31}
+                        textAnchor="middle"
+                        fill={isSelected ? '#e9fbff' : '#b3cad6'}
+                        fontSize="12"
+                      >
+                        {String(n.entry.data.title).slice(0, 25)}
+                        {String(n.entry.data.title).length > 25 ? '…' : ''}
+                      </text>
+                    )}
+                    <title>
+                      {kinds[n.entry.kind].label}: {String(n.entry.data.title)}
+                    </title>
                   </g>
                 );
               })}

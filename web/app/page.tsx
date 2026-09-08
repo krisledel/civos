@@ -72,6 +72,7 @@ import {
   dependencyHint,
 } from '@/components/civos/forms';
 import { RecordGraph } from '@/components/civos/graph';
+import { SystemMap } from '@/components/civos/system-map';
 import { QuickSwitcher } from '@/components/civos/quick-switcher';
 import type { Space } from '@/lib/store';
 const layers = [
@@ -321,7 +322,7 @@ export default function Home() {
       open={sidebarOpen}
       onOpenChange={setSidebarOpen}
       className={
-        'obsidian-shell' +
+        'civos-shell' +
         (detail ? ' has-document' : '') +
         (!sidebarOpen ? ' sidebar-collapsed' : '')
       }
@@ -476,7 +477,9 @@ export default function Home() {
               <span className="small-label">
                 {snap?.space.title || 'CivOS'} / {title}
               </span>
-              <h1>{layer === 'overview' && snap ? snap.space.title : title}</h1>
+              <h1>
+                {layer === 'overview' ? snap?.space.title || 'CivOS' : title}
+              </h1>
               <p>
                 {snap?.space.purpose ||
                   'Samla underlag. Pröva perspektiv. Följ besluten.'}
@@ -556,14 +559,10 @@ export default function Home() {
                   </div>
                   <div>
                     <span className="small-label">DIN FÖRSTA ARBETSYTA</span>
-                    <h2>
-                      En plats för frågor
-                      <br />
-                      som förtjänar eftertanke.
-                    </h2>
+                    <h2>Initiera en arbetsyta.</h2>
                     <p>
-                      Skapa en arbetsyta för ett gemensamt syfte. Lägg sedan
-                      till ärendet, deltagarna och underlaget som ni vill pröva.
+                      Avgränsa en fråga. Registrera underlag, pröva påståenden
+                      och följ beslut genom en versionerad historik.
                     </p>
                     <Button
                       className="primary-action"
@@ -615,13 +614,23 @@ export default function Home() {
                     <RecordGraph
                       entries={entries.filter(
                         (e) =>
-                          caseId === 'all' || !e.caseId || e.caseId === caseId,
+                          caseId === 'all' ||
+                          (e.kind === 'case'
+                            ? e.id === caseId
+                            : !e.caseId || e.caseId === caseId),
                       )}
                       selected={detail?.id || graphFocus}
                       onOpen={openDocument}
                     />
                   ) : layer === 'overview' ? (
                     <>
+                      <SystemMap
+                        snapshot={snap}
+                        caseId={caseId}
+                        selected={detail?.id || graphFocus}
+                        onOpen={openDocument}
+                        onCoordinate={() => navigate('coordinate')}
+                      />
                       <div className="overview-caption">
                         <span className="small-label">LÄGET I ARBETSYTAN</span>
                         <span>{current.length} aktuella poster</span>
