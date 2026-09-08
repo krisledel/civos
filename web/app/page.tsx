@@ -23,6 +23,12 @@ import {
   ArrowLeft,
   X,
   Library,
+  CircleCheck,
+  Clock3,
+  BookOpen,
+  Users,
+  Compass,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -37,6 +43,7 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -85,6 +92,13 @@ function saveFile(content: Blob, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+function MobileMenuDismiss({ selection }: { selection: string }) {
+  const { setOpenMobile } = useSidebar();
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [selection, setOpenMobile]);
+  return null;
+}
 export default function Home() {
   const [spaces, setSpaces] = useState<Space[]>([]),
     [sid, setSid] = useState(''),
@@ -97,6 +111,9 @@ export default function Home() {
     [busy, setBusy] = useState(false),
     [auth, setAuth] = useState(false),
     [loaded, setLoaded] = useState(false),
+    [sidebarOpen, setSidebarOpen] = useState(true),
+    [allFindings, setAllFindings] = useState(false),
+    [navigationStep, setNavigationStep] = useState(0),
     [editor, setEditor] = useState<{ kind: string; entry?: Entry } | null>(
       null,
     ),
@@ -110,6 +127,7 @@ export default function Home() {
     [trustDialog, setTrustDialog] = useState(false),
     [notice, setNotice] = useState('');
   const openDocument = (entry: Entry | null) => {
+    setNavigationStep((step) => step + 1);
     if (entry) setGraphFocus(entry.id);
     if (entry && detail && entry.id !== detail.id)
       setDocumentHistory((h) => [...h, detail].slice(-30));
@@ -126,6 +144,9 @@ export default function Home() {
   useEffect(() => {
     if (detail) document.getElementById('document-title')?.focus();
   }, [detail]);
+  useEffect(() => {
+    setAllFindings(false);
+  }, [sid, caseId]);
   const refreshSpaces = useCallback(async (chosen?: string) => {
     const r = await fetch('/api/civos');
     if (r.status === 401) {
@@ -220,12 +241,20 @@ export default function Home() {
           .toLocaleLowerCase('sv')
           .includes(search.toLocaleLowerCase('sv'))),
   );
+  const scopedFindings = (snap?.findings || []).filter(
+    (finding) =>
+      caseId === 'all' ||
+      finding.ids.some(
+        (id) => byId.get(id)?.caseId === caseId || id === caseId,
+      ),
+  );
   const kindOptions = Object.entries(kinds).filter(
       ([, v]) => v.layer === layer,
     ),
     title = layers.find((l) => l.id === layer)!.name;
   const navigate = (id: string) => {
-    if (window.innerWidth <= 1000) {
+    setNavigationStep((step) => step + 1);
+    if (window.innerWidth <= (sidebarOpen ? 1359 : 1119)) {
       setDetail(null);
       setDocumentHistory([]);
     }
@@ -289,8 +318,17 @@ export default function Home() {
   };
   return (
     <SidebarProvider
-      className={'obsidian-shell' + (detail ? ' has-document' : '')}
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
+      className={
+        'obsidian-shell' +
+        (detail ? ' has-document' : '') +
+        (!sidebarOpen ? ' sidebar-collapsed' : '')
+      }
     >
+      <MobileMenuDismiss
+        selection={`${sid}:${navigationStep}:${spaceDialog}`}
+      />
       <nav className="icon-rail" aria-label="Snabbnavigering">
         <div className="rail-mark">
           <Layers3 />
@@ -321,14 +359,27 @@ export default function Home() {
             <strong>CivOS</strong>
           </div>
           <span className="small-label">KUNSKAP · PERSPEKTIV · HANDLING</span>
-          {spaces.length > 0 && (
-            <Picker
-              value={sid}
-              change={setSid}
-              options={spaces.map((s) => ({ id: s.id, label: s.title }))}
-              label="Välj arbetsyta"
-            />
-          )}
+          <div className="workspace-selector">
+            {spaces.length > 0 && (
+              <Picker
+                value={sid}
+                change={setSid}
+                options={spaces.map((s) => ({ id: s.id, label: s.title }))}
+                label="Välj arbetsyta"
+              />
+            )}
+            <Button
+              variant="ghost"
+              className="new-workspace"
+              onClick={() => setSpaceDialog(true)}
+              disabled={auth || busy}
+              aria-label="Skapa ny arbetsyta"
+              title="Skapa ny arbetsyta"
+            >
+              <Plus size={16} />
+              {!spaces.length && 'Ny arbetsyta'}
+            </Button>
+          </div>
           <QuickSwitcher
             entries={current}
             onOpen={openDocument}
@@ -425,20 +476,28 @@ export default function Home() {
               <span className="small-label">
                 {snap?.space.title || 'CivOS'} / {title}
               </span>
-              <h1>{title}</h1>
+              <h1>{layer === 'overview' && snap ? snap.space.title : title}</h1>
               <p>
                 {snap?.space.purpose ||
                   'Samla underlag. Pröva perspektiv. Följ besluten.'}
               </p>
             </div>
-            <Button
-              className="primary-action"
-              onClick={() => setSpaceDialog(true)}
-              disabled={auth || busy}
-            >
-              <Plus />
-              Ny arbetsyta
-            </Button>
+            {snap && layer === 'overview' && (
+              <div className="header-actions">
+                <Button variant="outline" onClick={() => navigate('graph')}>
+                  <Network size={16} /> Visa samband
+                </Button>
+                {canKind('case') && (
+                  <Button
+                    className="primary-action"
+                    onClick={() => newEntry('case')}
+                    disabled={busy}
+                  >
+                    <Plus size={16} /> Nytt ärende
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
           {error && (
             <div role="alert" className="message error">
@@ -465,17 +524,6 @@ export default function Home() {
           ) : (
             <>
               <div className="workspace-controls">
-                {spaces.length > 0 && (
-                  <Picker
-                    value={sid}
-                    change={setSid}
-                    options={spaces.map((s) => ({
-                      id: s.id,
-                      label: s.title + (s.read_only ? ' · importerad' : ''),
-                    }))}
-                    label="Arbetsyta"
-                  />
-                )}
                 {snap && (
                   <>
                     <Picker
@@ -507,7 +555,12 @@ export default function Home() {
                     <Layers3 />
                   </div>
                   <div>
-                    <h2>Börja med en verklig fråga</h2>
+                    <span className="small-label">DIN FÖRSTA ARBETSYTA</span>
+                    <h2>
+                      En plats för frågor
+                      <br />
+                      som förtjänar eftertanke.
+                    </h2>
                     <p>
                       Skapa en arbetsyta för ett gemensamt syfte. Lägg sedan
                       till ärendet, deltagarna och underlaget som ni vill pröva.
@@ -518,6 +571,20 @@ export default function Home() {
                     >
                       Skapa arbetsyta <ArrowRight />
                     </Button>
+                    <div
+                      className="welcome-steps"
+                      aria-label="Arbetets tre steg"
+                    >
+                      <span>
+                        <BookOpen size={17} /> Samla underlag
+                      </span>
+                      <span>
+                        <Compass size={17} /> Pröva perspektiv
+                      </span>
+                      <span>
+                        <CircleCheck size={17} /> Följ besluten
+                      </span>
+                    </div>
                   </div>
                 </section>
               ) : !snap ? (
@@ -555,42 +622,74 @@ export default function Home() {
                     />
                   ) : layer === 'overview' ? (
                     <>
+                      <div className="overview-caption">
+                        <span className="small-label">LÄGET I ARBETSYTAN</span>
+                        <span>{current.length} aktuella poster</span>
+                      </div>
                       <div className="metric-grid">
                         {[
-                          [
-                            'Granskade observationer',
-                            `${snap.statistics.reviewed} / ${snap.statistics.observations}`,
-                            'Minst en registrerad bedömning',
-                          ],
-                          [
-                            'Uppföljda förfallna beslut',
-                            `${snap.statistics.followed} / ${snap.statistics.due}`,
-                            'Beslut med passerat uppföljningsdatum',
-                          ],
-                          [
-                            'Kända källursprung',
-                            String(snap.statistics.originGroups),
-                            `${snap.statistics.sources} källor · ${snap.statistics.unknownOrigins} med okänt ursprung`,
-                          ],
-                        ].map(([label, value, note]) => (
-                          <article className="metric" key={label}>
-                            <span>{label}</span>
-                            <strong>{value}</strong>
-                            <small>{note}</small>
-                          </article>
-                        ))}
+                          {
+                            label: 'Granskade observationer',
+                            value: snap.statistics.reviewed,
+                            total: snap.statistics.observations,
+                            note: 'Minst en registrerad bedömning',
+                            icon: ShieldCheck,
+                            tone: 'violet',
+                          },
+                          {
+                            label: 'Uppföljda förfallna beslut',
+                            value: snap.statistics.followed,
+                            total: snap.statistics.due,
+                            note: 'Beslut med passerat uppföljningsdatum',
+                            icon: CircleCheck,
+                            tone: 'mint',
+                          },
+                          {
+                            label: 'Kända källursprung',
+                            value: snap.statistics.originGroups,
+                            total: null,
+                            note: `${snap.statistics.sources} källor · ${snap.statistics.unknownOrigins} med okänt ursprung`,
+                            icon: BookOpen,
+                            tone: 'sand',
+                          },
+                        ].map(
+                          ({ label, value, total, note, icon: Icon, tone }) => (
+                            <article className="metric" key={label}>
+                              <div className="metric-heading">
+                                <span>{label}</span>
+                                <span className={'metric-icon ' + tone}>
+                                  <Icon size={18} />
+                                </span>
+                              </div>
+                              <strong>
+                                {value}
+                                {total !== null && <span> / {total}</span>}
+                              </strong>
+                              <small>{note}</small>
+                            </article>
+                          ),
+                        )}
                       </div>
                       <div className="section-bar">
-                        <h2>Ärenden</h2>
-                        {canKind('case') && (
-                          <Button onClick={() => newEntry('case')}>
-                            <Plus />
-                            Nytt ärende
-                          </Button>
-                        )}
+                        <h2>
+                          Dina ärenden{' '}
+                          <span className="section-count">
+                            {
+                              cases.filter(
+                                (e) => caseId === 'all' || caseId === e.id,
+                              ).length
+                            }
+                          </span>
+                        </h2>
+                        <span className="section-hint">
+                          Öppna ett ärende för att läsa vidare
+                        </span>
                       </div>
                       {cases.length === 0 ? (
                         <div className="empty">
+                          <span className="empty-icon">
+                            <FolderOpen size={24} />
+                          </span>
                           <h3>Vilken fråga ska ni undersöka?</h3>
                           <p>
                             Ett ärende avgränsar fråga, sammanhang, tid och
@@ -610,57 +709,71 @@ export default function Home() {
                                   openDocument(e);
                                 }}
                               >
-                                <span className="small-label">
-                                  {String(e.data.domain)}
-                                </span>
+                                <div className="case-card-top">
+                                  <span className="case-symbol">
+                                    <FolderOpen size={19} />
+                                  </span>
+                                  <span className="case-domain">
+                                    {String(e.data.domain)}
+                                  </span>
+                                  <ArrowUpRight size={17} />
+                                </div>
                                 <h3>{String(e.data.title)}</h3>
                                 <p>{String(e.data.question)}</p>
                                 <div className="card-foot">
                                   <span>
+                                    <FileText size={14} />
                                     {
                                       current.filter((x) => x.caseId === e.id)
                                         .length
                                     }{' '}
                                     kopplade poster
                                   </span>
-                                  <ArrowRight size={17} />
+                                  <span className="case-open">
+                                    Öppna <ArrowRight size={14} />
+                                  </span>
                                 </div>
                               </button>
                             ))}
                         </div>
                       )}
                       <div className="journey-actions">
-                        {['source', 'frame', 'actor', 'option', 'outcome'].map(
-                          (k) => (
-                            <Button
-                              key={k}
-                              variant="outline"
-                              onClick={() => {
-                                navigate(kinds[k].layer);
-                                if (canKind(k)) newEntry(k);
-                              }}
-                            >
-                              {kinds[k].plural}
-                              <ArrowRight size={15} />
-                            </Button>
-                          ),
-                        )}
+                        {[
+                          { k: 'source', icon: BookOpen },
+                          { k: 'frame', icon: Compass },
+                          { k: 'actor', icon: Users },
+                          { k: 'option', icon: GitBranch },
+                          { k: 'outcome', icon: CircleCheck },
+                        ].map(({ k, icon: Icon }) => (
+                          <Button
+                            key={k}
+                            variant="outline"
+                            onClick={() => {
+                              navigate(kinds[k].layer);
+                              if (canKind(k)) newEntry(k);
+                            }}
+                          >
+                            <Icon size={16} />
+                            <span>{kinds[k].plural}</span>
+                            {canKind(k) ? (
+                              <Plus size={14} />
+                            ) : (
+                              <ArrowRight size={14} />
+                            )}
+                          </Button>
+                        ))}
                       </div>
-                      <div className="two-columns">
+                      <div className="two-columns overview-panels">
                         <section className="panel">
-                          <h2>Behöver uppmärksamhet</h2>
+                          <div className="panel-heading">
+                            <h2>Behöver uppmärksamhet</h2>
+                            <span className="panel-icon attention">
+                              <Eye size={17} />
+                            </span>
+                          </div>
                           <div className="findings">
-                            {snap.findings
-                              .filter(
-                                (f) =>
-                                  caseId === 'all' ||
-                                  f.ids.some(
-                                    (id) =>
-                                      byId.get(id)?.caseId === caseId ||
-                                      id === caseId,
-                                  ),
-                              )
-                              .slice(0, 30)
+                            {scopedFindings
+                              .slice(0, allFindings ? undefined : 5)
                               .map((f, i) => (
                                 <button
                                   key={i}
@@ -677,14 +790,39 @@ export default function Home() {
                                 </button>
                               ))}
                           </div>
-                          {!snap.findings.length && (
-                            <p>
-                              Inga avvikelser enligt de kontroller som körts.
-                            </p>
+                          {scopedFindings.length > 5 && (
+                            <Button
+                              variant="ghost"
+                              className="show-findings"
+                              onClick={() => setAllFindings(!allFindings)}
+                            >
+                              {allFindings
+                                ? 'Visa färre'
+                                : `Visa alla ${scopedFindings.length}`}{' '}
+                              <ArrowRight size={14} />
+                            </Button>
+                          )}
+                          {!scopedFindings.length && (
+                            <div className="panel-empty">
+                              <span className="quiet-check">
+                                <CircleCheck size={22} />
+                              </span>
+                              <strong>Inga avvikelser hittade</strong>
+                              <p>
+                                Enligt de kontroller som körts
+                                {caseId !== 'all' ? ' för det här ärendet' : ''}
+                                .
+                              </p>
+                            </div>
                           )}
                         </section>
                         <section className="panel">
-                          <h2>Senaste händelser</h2>
+                          <div className="panel-heading">
+                            <h2>Senaste händelser</h2>
+                            <span className="panel-icon">
+                              <Clock3 size={17} />
+                            </span>
+                          </div>
                           <div className="timeline">
                             {entries
                               .filter(
