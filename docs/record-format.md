@@ -1,5 +1,8 @@
 # CivOS record format, version 1
 
+This document describes the separate CivOS 0.2 Python command-line prototype. The current web application uses 19 record types and signed bundles. See the [installation guide](../articles/civos-installationsguide.md) and [computational-model guide](../articles/civos-models.md) for the web workflow.
+
+
 The executable contract is `civos/model.py`. This document specifies its inputs and relationships. The format describes records of claims and decisions; successful validation establishes neither truth nor authority.
 
 ## Common fields

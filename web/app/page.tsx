@@ -55,6 +55,7 @@ import {
   meetsTarget,
   references,
   type Entry,
+  type Data,
 } from '@/lib/model';
 import {
   Picker,
@@ -66,10 +67,12 @@ import {
 } from '@/components/civos/forms';
 import { RecordGraph } from '@/components/civos/graph';
 import { CaseWorkbench } from '@/components/civos/case-workbench';
+import { ModelWorkbench } from '@/components/civos/model-workbench';
 import { QuickSwitcher } from '@/components/civos/quick-switcher';
 import type { Space } from '@/lib/store';
 import { fieldDisplay, recordStatus, recordSearch } from '@/lib/presentation';
 const layers = [
+  { id: 'models', name: 'Models', icon: Activity },
   { id: 'overview', name: 'Workbench', icon: Workflow },
   { id: 'graph', name: 'Reference graph', icon: Network },
   { id: 'observe', name: 'Observations', icon: Eye },
@@ -98,7 +101,7 @@ export default function Home() {
   const [spaces, setSpaces] = useState<Space[]>([]),
     [sid, setSid] = useState(''),
     [snap, setSnap] = useState<Snapshot | null>(null),
-    [layer, setLayer] = useState('overview'),
+    [layer, setLayer] = useState('models'),
     [caseId, setCase] = useState('all'),
     [kind, setKind] = useState('source'),
     [search, setSearch] = useState(''),
@@ -108,9 +111,11 @@ export default function Home() {
     [loaded, setLoaded] = useState(false),
     [sidebarOpen, setSidebarOpen] = useState(false),
     [navigationStep, setNavigationStep] = useState(0),
-    [editor, setEditor] = useState<{ kind: string; entry?: Entry } | null>(
-      null,
-    ),
+    [editor, setEditor] = useState<{
+      kind: string;
+      entry?: Entry;
+      initial?: Data;
+    } | null>(null),
     [detail, setDetail] = useState<Entry | null>(null),
     [documentHistory, setDocumentHistory] = useState<Entry[]>([]),
     [graphFocus, setGraphFocus] = useState<string | undefined>(),
@@ -444,7 +449,7 @@ export default function Home() {
           ))}
         </nav>
         <main className="workspace-main">
-          {layer !== 'overview' && (
+          {layer !== 'overview' && layer !== 'models' && (
             <div className="section-title">
               <div>
                 <span className="small-label">
@@ -528,6 +533,19 @@ export default function Home() {
                     >
                       Create workspace <ArrowRight />
                     </Button>
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          const d = await request('model_example');
+                          await refreshSpaces(d.id);
+                          setLayer('models');
+                        })
+                      }
+                    >
+                      Open synthetic model example
+                    </Button>
                   </div>
                 </section>
               ) : !snap ? (
@@ -565,6 +583,25 @@ export default function Home() {
                       )}
                       selected={detail?.id || graphFocus}
                       onOpen={openDocument}
+                    />
+                  ) : layer === 'models' ? (
+                    <ModelWorkbench
+                      key={sid + ':' + caseId}
+                      snapshot={snap}
+                      caseId={caseId}
+                      canCreate={canKind}
+                      onOpen={openDocument}
+                      onCreate={(kind, initial, chosenCase) => {
+                        setCase(chosenCase);
+                        setEditor({ kind, initial });
+                      }}
+                      onRefresh={refresh}
+                      onExample={async () => {
+                        const d = await request('model_example');
+                        await refreshSpaces(d.id);
+                        setLayer('models');
+                      }}
+                      onNavigate={navigate}
                     />
                   ) : layer === 'overview' ? (
                     <CaseWorkbench
@@ -1045,6 +1082,13 @@ export default function Home() {
               )}
               <div className="guide-links">
                 <a
+                  href="/articles/civos-models.html"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Computational models and worked example ↗
+                </a>
+                <a
                   href="/articles/civos-installationsguide.html"
                   target="_blank"
                   rel="noreferrer"
@@ -1299,7 +1343,9 @@ export default function Home() {
                     ))}
                   <code className="hash">{detail.hash}</code>
                 </div>
-                {!['case', 'policy', 'rule_resolution'].includes(detail.kind) &&
+                {!['case', 'policy', 'rule_resolution', 'model_run'].includes(
+                  detail.kind,
+                ) &&
                   canKind(detail.kind) &&
                   !entries.some((e) => e.supersedes === detail.id) && (
                     <Button

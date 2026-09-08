@@ -80,7 +80,7 @@ Measure:
 
 Before the exercise, agree what improvement would justify the extra work and which failures would stop the pilot. Report both conditions with the result. If the ledger increases recording effort without a useful retrieval benefit, or if its structure repeatedly conceals the central objection, the proposed workflow has failed that test.
 
-The prototype's automated checks establish properties of records and their links. They cannot establish climate validity, causal impact, inclusion, or improved decision quality. Those require appropriate evidence and evaluation beyond a software test.
+Automated checks establish properties of records and their links. The web kernel also checks consequences of declared affine equations and bounds. These checks cannot establish climate validity, causal impact, inclusion, or improved decision quality. Those require appropriate evidence and evaluation beyond a software test. The synthetic energy example supplies no empirical parameters for this drainage case.
 
 ## Next steps
 

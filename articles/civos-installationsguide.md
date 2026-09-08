@@ -113,6 +113,16 @@ Exports contain records, not attachment files, membership permissions, or node t
 
 The branches remain separate. CivOS does not synchronise them automatically or determine which branch is right. New information, conflicts, and continued cooperation require local review and further transfers.
 
+## 8. Test the computational model
+
+Open **Models → Open synthetic example**. This creates a separate workspace with three invented energy packages and two perspectives. Initially, Cost prefers Flexible and Continuity prefers Reserve. Save the initial analysis. Inspect the exact price switch at `4`, then record a clearly synthetic price measurement with bounds `[4.2,4.8]`, reference `4.5`, and unit `synthetic index`. Reserve becomes guaranteed preferred for both perspectives. The initial analysis remains unchanged and is flagged for review.
+
+Revise the model's stress assumption to `[3,4]`, reference `3.5`. Measurements belong to an exact model version, so record the synthetic price interval for that new version. Reserve now fails its hard constraint `stress ≤ 2.5` throughout the bounds. Balanced wins for both perspectives at the reference point, but the Cost perspective has no guaranteed winner across the price interval. Follow the [model guide](civos-models.md) for the equations, exact boundaries, measurement conflicts, and decision attachments.
+
+Saved analyses cannot be revised in place. A decision may attach a current local analysis through **Saved model analysis**. Its option must satisfy every modeled hard constraint at the saved reference point; the usual decision checks also apply. Later evidence can flag that decision for review without altering its original result.
+
+To run automated checks, stop any existing development server and run `npm run test:ci` from `web/`. The command starts a local server, exercises the kernel and full API workflow, and stops it. If a server is already running, use `npm test`. Checks create synthetic workspaces only on localhost.
+
 ## Record types in this installation
 
 | Record | Purpose |
@@ -126,8 +136,11 @@ The branches remain separate. CivOS does not synchronise them automatically or d
 | `mapping` | Relate two concepts with scope, translation loss, and rationale. |
 | `assessment` | Review an observation, concept mapping, option, or outcome. |
 | `option` | Describe an action option's basis, benefits, costs, and reversibility. |
+| `model` | Link executable equations and bounds to exact option and perspective versions. |
+| `model_measurement` | Record a sourced interval and method for an evidence input in one model version. |
+| `model_run` | Preserve a server-recomputed analysis, selected evidence, scenario, and exact history prefix. |
 | `argument` | Document support, opposition, or conditions for an option. |
-| `decision` | Record the choice, responsibility, mandate, uncertainty, target, and rule version. |
+| `decision` | Record the choice, responsibility, mandate, uncertainty, target, rule version, and optional saved model analysis. |
 | `task` | Track implementation, owner, deadline, and status. |
 | `outcome` | Record a measured value, evidence, limitations, and next step. |
 | `policy` | Define the working rule and its procedural requirements. |

@@ -66,7 +66,12 @@ export async function request(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, ...data }),
   });
-  const b = (await res.json()) as { error: string; id: string; token: string };
+  const b = (await res.json()) as {
+    error: string;
+    id: string;
+    token: string;
+    added: Entry[];
+  };
   if (!res.ok) throw Error(b.error || 'The action failed.');
   return b;
 }
@@ -133,7 +138,7 @@ export function EntryDialog({
   close,
   saved,
 }: {
-  editor: { kind: string; entry?: Entry };
+  editor: { kind: string; entry?: Entry; initial?: Data };
   snap: Snapshot;
   caseId: string;
   close: () => void;
@@ -143,31 +148,34 @@ export function EntryDialog({
   const [data, setData] = useState<Data>(() =>
     editor.entry
       ? { ...editor.entry.data }
-      : Object.fromEntries(
-          schema.fields
-            .filter(
-              (f) =>
-                f.type === 'date' ||
-                f.type === 'refs' ||
-                f.type === 'list' ||
-                f.key === 'policyId',
-            )
-            .map((f) => [
-              f.key,
-              f.type === 'date'
-                ? new Date(
-                    Date.now() +
-                      (f.key === 'reviewAt' || f.key === 'dueAt'
-                        ? 86400000
-                        : 0),
-                  ).toISOString()
-                : f.key === 'policyId'
-                  ? active(snap.entries)
-                      .filter((e) => e.kind === 'policy')
-                      .at(-1)?.id || ''
-                  : [],
-            ]),
-        ),
+      : {
+          ...Object.fromEntries(
+            schema.fields
+              .filter(
+                (f) =>
+                  f.type === 'date' ||
+                  f.type === 'refs' ||
+                  f.type === 'list' ||
+                  f.key === 'policyId',
+              )
+              .map((f) => [
+                f.key,
+                f.type === 'date'
+                  ? new Date(
+                      Date.now() +
+                        (f.key === 'reviewAt' || f.key === 'dueAt'
+                          ? 86400000
+                          : 0),
+                    ).toISOString()
+                  : f.key === 'policyId'
+                    ? active(snap.entries)
+                        .filter((e) => e.kind === 'policy')
+                        .at(-1)?.id || ''
+                    : [],
+              ]),
+          ),
+          ...editor.initial,
+        },
   );
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -392,7 +400,7 @@ function FieldInput({
         value={String(value || '')}
         onChange={(e) => change(e.target.value)}
         required={f.required}
-        maxLength={8000}
+        maxLength={f.maxLength || 8000}
         rows={3}
       />
     );

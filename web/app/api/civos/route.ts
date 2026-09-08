@@ -21,6 +21,8 @@ import {
 } from '@/lib/store';
 import { signBundle, verifyBundle } from '@/lib/bundles';
 import hosting from '@/.openai/hosting.json';
+import { runProposal } from '@/lib/kernel-records';
+import { createKernelExample } from '@/lib/kernel-example';
 const json = (value: unknown, status = 200) =>
   Response.json(value, {
     status,
@@ -282,6 +284,8 @@ export async function POST(req: Request) {
         },
         201,
       );
+    if (b.action === 'model_example')
+      return json(await createKernelExample(person), 201);
     if (b.action === 'import') {
       const original = text(b.envelope, 2_000_000),
         bundle = await verifyBundle(original);
@@ -340,6 +344,33 @@ export async function POST(req: Request) {
       return json({ id: inv.space_id });
     }
     const s = await getSpace(text(b.space, 150), person);
+    if (b.action === 'model_run') {
+      writable(s, 'model_run');
+      if (
+        !Array.isArray(b.measurementIds) ||
+        b.measurementIds.length > 8 ||
+        b.measurementIds.some((id: unknown) => typeof id !== 'string') ||
+        new Set(b.measurementIds).size !== b.measurementIds.length
+      )
+        throw new Problem('Choose at most eight distinct measurements.');
+      const prior = await records(s);
+      let proposal: Proposal;
+      try {
+        proposal = runProposal(
+          prior,
+          text(b.modelId, 150),
+          b.measurementIds,
+          text(b.scenario, 3000),
+          text(b.title, 150),
+        );
+      } catch (e) {
+        throw new Problem(e instanceof Error ? e.message : 'Invalid analysis.');
+      }
+      return json(
+        { added: await append(s, proposal, text(b.head, 64), person) },
+        201,
+      );
+    }
     if (b.action === 'append') {
       if (!b.proposal || typeof b.proposal !== 'object')
         throw new Problem('The record is missing.');

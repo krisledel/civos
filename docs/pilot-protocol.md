@@ -1,5 +1,8 @@
 > This protocol describes the CivOS 0.2 CLI pilot. For the complete web workflow, see ../articles/civos-installationsguide.md.
 
+This document describes the separate CivOS 0.2 Python command-line prototype. The current web application uses 19 record types and signed bundles. See the [installation guide](../articles/civos-installationsguide.md) and [computational-model guide](../articles/civos-models.md) for the web workflow.
+
+
 # A test that CivOS can fail
 
 **Question:** Does an explicit record of claims, evidence, dissent and follow-up make a small group's decisions easier to inspect and correct, at an acceptable administrative cost?

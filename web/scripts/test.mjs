@@ -6,14 +6,28 @@ for (const [src, name] of [
   ['lib/model.ts', 'model'],
   ['lib/presentation.ts', 'presentation'],
   ['lib/bundles.ts', 'bundles'],
+  ['lib/rational.ts', 'rational'],
+  ['lib/kernel.ts', 'kernel'],
+  ['lib/kernel-records.ts', 'kernel-records'],
+  ['lib/kernel-example-data.ts', 'kernel-example-data'],
+  ['tests/kernel.ts', 'kernel-test'],
+  ['tests/record-regressions.ts', 'record-regressions'],
   ['tests/integration.ts', 'integration'],
 ]) {
-  const code = fs
-    .readFileSync(src, 'utf8')
-    .replaceAll("'../lib/model'", "'./model.mjs'")
-    .replaceAll("'../lib/presentation'", "'./presentation.mjs'")
-    .replaceAll("'../lib/bundles'", "'./bundles.mjs'")
-    .replaceAll("'./model'", "'./model.mjs'");
+  let code = fs.readFileSync(src, 'utf8');
+  for (const moduleName of [
+    'model',
+    'presentation',
+    'bundles',
+    'rational',
+    'kernel',
+    'kernel-records',
+    'kernel-example-data',
+    'record-regressions',
+  ])
+    code = code
+      .replaceAll("'../lib/" + moduleName + "'", "'./" + moduleName + ".mjs'")
+      .replaceAll("'./" + moduleName + "'", "'./" + moduleName + ".mjs'");
   fs.writeFileSync(
     'work/' + name + '.mjs',
     ts.transpileModule(code, {
@@ -24,6 +38,10 @@ for (const [src, name] of [
     }).outputText,
   );
 }
+const kernelResult = spawnSync(process.execPath, ['work/kernel-test.mjs'], {
+  stdio: 'inherit',
+});
+if (kernelResult.status !== 0) throw Error('Kernel tests failed.');
 const result = spawnSync(process.execPath, ['work/integration.mjs'], {
   stdio: 'inherit',
 });

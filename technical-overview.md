@@ -1,5 +1,8 @@
 # CivOS 0.2: technical overview
 
+This document describes the separate CivOS 0.2 Python command-line prototype. The current web application uses 19 record types and signed bundles. See the [installation guide](articles/civos-installationsguide.md) and [computational-model guide](articles/civos-models.md) for the web workflow.
+
+
 The prototype implements a local decision record with checked references and an inspectable history. Its scope is one database managed by a known custodian. The distributed architecture proposed in the original essays remains a design question.
 
 ## Components

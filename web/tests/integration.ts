@@ -9,6 +9,7 @@ import {
   kinds,
 } from '../lib/model';
 import { verifyBundle, signBundle } from '../lib/bundles';
+import { runProposal, runStatus } from '../lib/kernel-records';
 import {
   fieldDisplay,
   optionLabel,
@@ -566,6 +567,226 @@ ok(
   (await originalAgain.text()) === original,
   'Forwarding an import must preserve the original envelope',
 );
+const example = await post({ action: 'model_example' });
+sid = example.id;
+s = await state(sid);
+head = s.space.head;
+const modelRecord = s.entries.find(
+  (e: Entry) => e.id === example.modelId,
+) as Entry;
+const exampleSource = s.entries.find(
+  (e: Entry) => e.kind === 'source',
+) as Entry;
+const exampleObservation = s.entries.find(
+  (e: Entry) => e.kind === 'observation',
+) as Entry;
+const examplePolicy = s.entries.find(
+  (e: Entry) => e.kind === 'policy',
+) as Entry;
+const optionIds = modelRecord.data.optionIds as string[];
+const frameIds = modelRecord.data.frameIds as string[];
+const saveRun = async (measurementIds: string[], scenario = '{}') => {
+  const response = await post({
+    action: 'model_run',
+    space: sid,
+    head,
+    modelId: modelRecord.id,
+    measurementIds,
+    scenario,
+    title: 'Integration analysis',
+  });
+  head = response.added[0].hash;
+  return response.added[0] as Entry;
+};
+const initialHead = head;
+const firstRun = await saveRun([]);
+const firstResult = JSON.parse(String(firstRun.data.result));
+ok(
+  firstResult.perspectives[0].winners[0] === optionIds[0] &&
+    firstResult.perspectives[1].winners[0] === optionIds[2],
+  'Synthetic perspectives initially disagree',
+);
+ok(
+  firstRun.data.baseHead === initialHead &&
+    firstRun.data.baseSequence === firstRun.seq - 1,
+  'Saved run identifies its exact history prefix',
+);
+await post(
+  {
+    action: 'model_run',
+    space: sid,
+    head: initialHead,
+    modelId: modelRecord.id,
+    measurementIds: [],
+    scenario: '{}',
+    title: 'Stale head',
+  },
+  409,
+);
+s = await state(sid);
+const forged = runProposal(
+  s.entries,
+  modelRecord.id,
+  [],
+  '{}',
+  'Forged analysis',
+);
+forged.data.result = '{}';
+await post({ action: 'append', space: sid, head, proposal: forged }, 400);
+const measurementData = {
+  title: 'Synthetic narrow price measurement',
+  modelId: modelRecord.id,
+  variable: 'price',
+  unit: 'synthetic index',
+  low: 4.2,
+  value: 4.5,
+  high: 4.8,
+  sourceIds: [exampleSource.id],
+  method: 'Constructed interval for integration test; no empirical claim.',
+};
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'model_measurement',
+      caseId: example.caseId,
+      data: { ...measurementData, variable: 'stress' },
+    },
+  },
+  400,
+);
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'model_measurement',
+      caseId: example.caseId,
+      data: { ...measurementData, unit: 'wrong unit' },
+    },
+  },
+  400,
+);
+const measurement = await add(
+  'model_measurement',
+  measurementData,
+  example.caseId,
+);
+s = await state(sid);
+ok(
+  runStatus(firstRun, s.entries).live?.sharedPreferred[0] === optionIds[2],
+  'New measurement establishes a shared guaranteed option',
+);
+ok(
+  s.entries.find((e: Entry) => e.id === firstRun.id).data.result ===
+    firstRun.data.result,
+  'New evidence preserves the historical calculation',
+);
+ok(
+  s.findings.some(
+    (f: any) => f.ids.includes(firstRun.id) && f.type === 'model',
+  ),
+  'Saved analysis is marked stale',
+);
+const measuredRun = await saveRun([measurement.id]);
+const exampleActor = await add('actor', {
+  ...a.data,
+  title: 'Synthetic model reviewer',
+});
+await add(
+  'assessment',
+  {
+    ...assessment.data,
+    title: 'Review synthetic input provenance',
+    targetId: exampleObservation.id,
+    actorId: exampleActor.id,
+    frameId: frameIds[0],
+    evidenceIds: [exampleSource.id],
+  },
+  example.caseId,
+);
+const modeledDecisionData = {
+  ...decisionData,
+  title: 'Synthetic modeled decision',
+  optionId: optionIds[2],
+  ownerId: exampleActor.id,
+  policyId: examplePolicy.id,
+  modelRunId: measuredRun.id,
+};
+await post(
+  {
+    action: 'append',
+    space: sid,
+    head,
+    proposal: {
+      kind: 'decision',
+      caseId: example.caseId,
+      data: { ...modeledDecisionData, modelRunId: firstRun.id },
+    },
+  },
+  400,
+);
+const modeledDecision = await add(
+  'decision',
+  modeledDecisionData,
+  example.caseId,
+);
+await add(
+  'model_measurement',
+  {
+    ...measurementData,
+    title: 'Revised synthetic measurement',
+    low: 2,
+    value: 3,
+    high: 3.8,
+  },
+  example.caseId,
+  measurement.id,
+);
+s = await state(sid);
+ok(
+  s.findings.some(
+    (f: any) => f.ids.includes(modeledDecision.id) && f.type === 'model',
+  ),
+  'A decision is flagged when its calculation basis changes',
+);
+ok(
+  runStatus(measuredRun, s.entries).state === 'changed',
+  'A revised measurement produces an explicit current comparison',
+);
+await add(
+  'model_measurement',
+  { ...measurementData, title: 'Conflicting synthetic price estimate' },
+  example.caseId,
+);
+s = await state(sid);
+ok(
+  runStatus(measuredRun, s.entries).state === 'blocked',
+  'Conflicting new evidence requires an explicit choice',
+);
+await verifyEntries(s.entries, s.space.head);
+checks++;
+const modelExport = await fetch(
+  base + '/api/civos?space=' + sid + '&export=1',
+  { headers },
+);
+const modelEnvelope = await modelExport.text();
+await verifyBundle(modelEnvelope);
+checks++;
+const importedModel = await post({ action: 'import', envelope: modelEnvelope });
+const modelImportedState = await state(importedModel.id);
+ok(
+  modelImportedState.entries.length === s.entries.length,
+  'Models, measurements, analyses and modeled decisions survive signed import',
+);
+ok(
+  modelImportedState.entries.find((e: Entry) => e.id === firstRun.id).data
+    .result === firstRun.data.result,
+  'Imported historical results remain exact',
+);
 console.log(
   JSON.stringify(
     {
@@ -575,6 +796,7 @@ console.log(
       localReReview: 'passed',
       concurrentAppend: 'passed',
       attachments: 'passed',
+      computationalWorkflow: 'passed',
       workspace: created.id,
     },
     null,

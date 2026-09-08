@@ -2,151 +2,119 @@
 
 **Kris Ledel**
 
-CivOS är en arbetsyta för att undersöka frågor, jämföra perspektiv, granska underlag, fatta redovisade beslut och följa upp vad som händer. Arbetsreglerna kan också granskas och ändras. Webbversionen omsätter alla fem lager i den ursprungliga arkitekturen till sammanhängande arbetsflöden.
+CivOS connects evidence, competing perspectives, computational models, decisions, and observed outcomes. A group can state its assumptions as equations, find where its preferences diverge, test hard constraints, and see which measurements could change the result. Saved analyses remain linked to the exact evidence and model versions used in a decision.
 
-En organisation kan exempelvis registrera observationer från två grupper, beskriva vad gruppernas begrepp betyder, behålla deras skilda bedömningar, välja ett handlingsalternativ och mäta utfallet. Om underlaget eller reglerna behöver ändras sparas en ny version. Äldre beslut behåller hänvisningarna till det underlag som användes då.
+The web application provides account access, persistent workspaces, 19 record types, version history, and signed exchange between separate branches. The computational kernel is `civos.affine.v1`.
 
-Gränssnittet har dokumentträd, snabböppning med Ctrl+K, en beständig läspanel med bakåtlänkar och en klickbar sambandsgraf. Grafen visar högst 80 dokument åt gången och kan avgränsas till ett ärende eller en sökning.
+## Try the computational workflow
 
-## Börja här
+Open **Models → Open synthetic example** in the application. The example creates a separate workspace with invented inputs, three energy packages, and two perspectives.
 
-Använd webbversionen i `web/` för det fullständiga arbetsflödet. Den har kontobaserad åtkomst, arbetsytor, formulär, bilagor, granskning, beslutsvillkor, uppföljning och signerat datautbyte.
+1. At the initial values, Cost prefers Flexible; Continuity prefers Reserve. Save the analysis.
+2. Inspect the exact price threshold at `4`. Moving the reference value above it changes Cost's pointwise winner, while the full uncertainty interval remains unresolved.
+3. Record a synthetic price measurement with bounds `[4.2,4.8]` and reference `4.5`. Reserve becomes guaranteed preferred in both perspectives. The earlier analysis is preserved and flagged.
+4. Revise the stress assumption to `[3,4]`, reference `3.5`, and record the price interval for the new model version. Reserve now violates a hard constraint throughout the bounds. Balanced wins at the reference point, but it is not guaranteed preferred throughout all allowed prices.
 
-Python-programmet i `civos/` är den tidigare prototypen, **CivOS 0.2**. Det kör en lokal SQLite-logg och skapar en HTML-rapport. Det har fem posttyper och ett eget JSON-format. Rapporten är en läsvy. Den nya webbversionen har en annan datamodell och importerar inte 0.2-exporter automatiskt.
+See the [worked model guide](articles/civos-models.md) for every equation, result, measurement entry, and decision attachment. All example values are synthetic.
 
-| Del | Webbversion | CivOS 0.2 |
-| --- | --- | --- |
-| Användning | Redigering och samarbete i webbläsaren | Python-kommandon och HTML-rapport |
-| Data | Arbetsytor i D1, bilagor i R2 | Lokal SQLite-databas |
-| Identitet | Registrerande konto och arbetsyteroll | Självangivet författarnamn |
-| Arkitektur | Alla fem lager, 16 posttyper | Påstående, underlag, bedömning, beslut, utfall |
-| Överföring | Signerat paket, isolerad import och lokal fortsättning | JSON-export och återställning till tom databas |
+## What the kernel calculates
 
-## De fem lagren
+Each perspective defines a separate score expression and hard constraints for every option. Higher scores are better within that perspective. Scores are never averaged across perspectives.
 
-1. **Observation och sammanhang.** Registrera källor, metoder, tid, plats och osäkerhet. Skilj observationer från tolkningar, prognoser och värderingar. Ange gemensamt ursprung så att kopierade uppgifter inte framställs som oberoende belägg.
-2. **Perspektiv och begrepp.** Beskriv antaganden, giltighetsområde och begränsningar. Relatera begrepp mellan perspektiv och ange vad som går förlorat i översättningen. Oenighet kan förbli synlig.
-3. **Förtroende och granskning.** Koppla bedömningar till konkreta uppgifter, begreppsrelationer, alternativ eller utfall. Dokumentera granskningsmetod, reservationer och intressen. Håll kontots registrering skild från den deltagare som anges i innehållet.
-4. **Beslut och konsekvenser.** Jämför alternativ och argument. Registrera ansvarig, mandat, accepterad osäkerhet, kvarstående invändningar, mål och stoppvillkor. Följ åtgärder och mät utfall i samma enhet som beslutets mål.
-5. **Samordningens granskning.** Visa saknad granskning, öppna invändningar, utebliven representation, reviderat underlag och missad uppföljning. Låt erfarenheter leda till dokumenterade ändringsförslag och nya arbetsregler.
+- Exact affine bounds over a box of simultaneous input intervals, with shared variables retained in pairwise score differences.
+- Feasible options and tied winners at the selected reference values.
+- Conservative certificates for feasibility and weak preference throughout the full bounds.
+- Exact switching points along one input, with the other reference values held fixed.
+- Sufficient measurement ranges for a shared preference while retaining the other inputs' uncertainty.
+- Decomposition of score differences into declared evidence, assumption, and value contributions.
 
-## Posttyper
+Expressions allow constants, input names, addition, subtraction, multiplication by constants, and division by nonzero constants. Limits are 1–8 inputs, 2–6 options, 1–4 perspectives, and four constraints per option and perspective. Nonlinear expressions are rejected. Exact comparisons use rational arithmetic on the represented inputs; displayed decimals are rounded. Parser, model-size, coefficient-precision, and arithmetic limits reject oversized calculations.
 
-Den körbara specifikationen finns i [`web/lib/model.ts`](web/lib/model.ts).
+Guarantees are conditional on the entered equations and bounds. The uncertainty box supplies no probability distribution and does not encode correlations. A missing certificate means this conservative test did not establish a result. It does not prove agreement impossible. Units and input categories are declared by the author; no dimensional analysis, source validation, causal inference, or institutional mandate is calculated.
 
-| Typ | Innehåll |
+## Evidence, review, and decisions
+
+The five original layers are represented in the same case history:
+
+| Layer | Implemented workflow |
 | --- | --- |
-| `case` — ärende | Fråga, sakområde, plats, berörda grupper och tidshorisont. |
-| `actor` — deltagare | Angivet namn, uppdrag, företrädda grupper, kunskapsområden och intressen. |
-| `source` — källa | Adress, insamlingsmetod, datum, gemensamt ursprung, begränsningar och eventuell bilagereferens. |
-| `observation` — observation | Uppgift, kategori, underlag, perspektiv, tid, plats, osäkerhet och uppgifter som den motsäger eller begränsar. |
-| `frame` — perspektiv | Beskrivning, metod, antaganden, omfattning, begränsningar och företrädda grupper. |
-| `concept` — begrepp | Betydelse och avgränsningar inom ett bestämt perspektiv. |
-| `mapping` — begreppsrelation | Två begrepp, relation, tillämpningsområde, översättningsförlust och motivering. |
-| `assessment` — bedömning | Granskat objekt, angiven granskare, perspektiv, slutsats, metod, oberoende, intressen och underlag. |
-| `option` — alternativ | Föreslagen handling, kunskapsgrund, nytta, kostnader och möjlighet att avbryta. |
-| `argument` — argument | Ställning för, emot eller med villkor; deltagare, perspektiv, skäl och hänvisningar. |
-| `decision` — beslut | Valt alternativ, ansvarig, mandat, motivering, invändningar, datum, mätbart mål, stoppvillkor och regelversion. |
-| `task` — åtgärd | Beslut, ansvarig, tidsfrist, status och genomförande. |
-| `outcome` — utfall | Beslut, mättidpunkt, värde, enhet, metod, underlag, begränsningar och nästa steg. |
-| `policy` — arbetsregel | Regeltext, minsta antal granskarkonton, obligatoriska grupper och högsta uppföljningstid. |
-| `rule_change` — ändringsförslag | Problem, föreslagen regel, ändrade villkor och de poster som motiverar förslaget. |
-| `rule_resolution` — regelbeslut | Antagande eller avslag av ett ändringsförslag, med motivering. |
+| Observation | Sources, methods, origin, attachments, observations, categories, uncertainty, and measurements. |
+| Perspectives | Frames, scoped concepts and mappings, explicit assumptions, and separate computational rules. |
+| Review | Assessments, methods, stated interests, objections, and registering accounts. |
+| Consequential action | Options, arguments, model analyses, decisions, owners, targets, tasks, and measured outcomes. |
+| Reflection | Findings, changed evidence, missed follow-up, rule proposals, and new working-rule versions. |
 
-Ärenden, deltagare och arbetsregler med tillhörande ändringsförslag gäller arbetsytan. Övriga poster hör till ett ärende. Hänvisningar måste peka på befintliga poster av rätt typ.
+A decision requires the current working rule, sufficient registering reviewer accounts for each observation in its option's basis, contributions from required groups, and a future follow-up date. It records responsibility, claimed authority, rationale, remaining objections, a target, and a stopping condition. Reviews can disagree when a decision proceeds.
 
-## Konton och roller
+A decision may attach a current saved analysis. Its selected option must satisfy all modeled hard constraints at the saved reference point. The application does not require the option to be preferred or feasible throughout all bounds. An imported analysis must be recalculated locally before attachment to a local decision.
 
-Arbetsytor är åtkomstskyddade. Inloggningen identifierar kontot som registrerar en post. Ett deltagarnamn i ett formulär ger ingen behörighet och är ingen verifiering av personens uppdrag.
+New measurements can flag analyses and attached decisions for review. Conflicting measurements require an explicit choice. Model, option, perspective, and source revisions retain exact earlier references. A correction appends a record through `supersedes`; it does not rewrite previous results. Cases have stable IDs. Saved analyses are immutable and can only be followed by another analysis.
 
-| Roll | Befogenheter |
+## Record model
+
+The executable schema and validation are in [`web/lib/model.ts`](web/lib/model.ts). Computational semantics are in [`kernel.ts`](web/lib/kernel.ts), [`rational.ts`](web/lib/rational.ts), and [`kernel-records.ts`](web/lib/kernel-records.ts).
+
+| Function | Record types |
 | --- | --- |
-| Ägare (`owner`) | Hanterar arbetsytans innehåll, inbjudningar, åtkomst, nodtillit och arbetsregler. Kan revidera andras poster med historiken bevarad. |
-| Redaktör (`editor`) | Registrerar innehåll och ändringsförslag samt reviderar egna poster. Kan inte anta regler eller hantera åtkomst. |
-| Granskare (`reviewer`) | Registrerar bedömningar, argument och utfall samt reviderar egna tillåtna poster. |
-| Läsare (`viewer`) | Läser och exporterar tillgängligt innehåll. Kan inte ändra den ursprungliga arbetsytan. |
+| Scope and participants | `case`, `actor` |
+| Evidence | `source`, `observation` |
+| Interpretation | `frame`, `concept`, `mapping` |
+| Review | `assessment` |
+| Computation | `model`, `model_measurement`, `model_run` |
+| Deliberation and action | `option`, `argument`, `decision`, `task` |
+| Feedback | `outcome` |
+| Rules | `policy`, `rule_change`, `rule_resolution` |
 
-Ägaren kan bjuda in de andra rollerna med en kod som kan användas en gång och gäller i 24 timmar. En separat lokal fortsättning får en egen ägare; den ändrar inte källarbetsytans behörigheter.
+`model_run` identifies its model, selected measurements, scenario reference overrides, kernel version, history-prefix length and hash, and result summary. The server computes that summary and verifies it again during history replay. A modified result cannot pass validation merely by rebuilding the record hashes.
 
-Ett beslut kräver den gällande regelversionen, ett framtida uppföljningsdatum, tillräckligt många separat registrerande granskarkonton för varje observation i alternativets kunskapsgrund och argument från regelns obligatoriska grupper. Antalet konton är en procedurkontroll. Det bevisar inte oberoende sakkunskap eller verklig representation. En invändning kan finnas kvar när ett beslut registreras.
+## Accounts and exchange
 
-## Revisioner och återkoppling
+Owners manage workspace content, invitations, access, node trust, and rules. Editors register content and rule proposals and revise their own records. Reviewers contribute assessments, arguments, and outcomes. Readers inspect and export accessible content. A participant name inside a record grants no account permissions. Multiple accounts do not establish independent expertise or representative authority.
 
-En revision skapar en ny post med `supersedes` som hänvisar till den senaste versionen av samma posttyp och ärende. Den gamla posten finns kvar. Tidigare hänvisningar flyttas inte. Systemet visar därför när ett beslut eller en bedömning hänvisar till underlag som senare har reviderats.
+Exports use canonical `civos.bundle.v1` envelopes signed with the node's Ed25519 key. They include records, the chain head, public key, and signature. Import checks the signature, record chain, references, and computations, then creates an isolated read-only branch. Re-export preserves the original envelope. A local continuation retains provenance and receives its own access and working rule; local decisions require local review.
 
-När ägaren antar ett ändringsförslag registreras både regelbeslutet och en ny version av arbetsregeln. Tidigare beslut fortsätter visa den regel de fattades under. Nya beslut måste använda den aktuella versionen.
+Exchange is manual. Automatic synchronization, branch merging, and decentralized consensus are not implemented. Signatures authenticate a key's export, not the truth of its contents or personal authorization by every participant. An operator controlling both the database and signing key can rewrite and re-sign history; independently retained exports provide checkpoints.
 
-Mål jämförs numeriskt med `minst`, `högst` eller `exakt`. Ett missat mål syns som avvikelse. En registrerad mätning kan vara ofullständig eller ha andra möjliga förklaringar; jämförelsen fastställer inte kausalitet. Varje beslut har ett uttryckligt framtida uppföljningsdatum inom arbetsregelns högsta tidsfrist.
+Record exports omit attachment bytes, membership, and the node-trust register. Back up the database, attachment storage, and signing key separately. Revising a record does not delete it from copies already shared.
 
-## Signerat datautbyte
+## Run locally
 
-Exporten är ett kanoniskt JSON-paket i formatet `civos.bundle.v1`. Det innehåller arbetsytans posthistorik, nod- och arbetsyteidentifierare, exporttid, hashkedjans slutvärde, publik nyckel, fingeravtryck och en Ed25519-signatur. Nodens privata nyckel ligger på servern och lämnar inte med exporten.
-
-Importen kontrollerar paketformat, fingeravtryck, signatur, hashkedja och posternas struktur. Ändra inte JSON-filens formatering före import. Ett giltigt paket skapar en separat, skrivskyddad gren. Det slås inte automatiskt ihop med en befintlig arbetsyta.
-
-Skapa en lokal fortsättning för att arbeta vidare. Originalhistoriken bevaras, medan den nya grenen får egen åtkomst och en lokal arbetsregel. Granska importerade uppgifter lokalt innan de används som grund för nya beslut. Importerade deltagarnamn, konton och bedömningar ger ingen lokal behörighet eller automatisk rätt att räknas som lokal granskning.
-
-Ägaren kan föra ett lokalt register över erkända eller återkallade nyckelfingeravtryck, med sakområde och motivering. Jämför ett fingeravtryck med avsändaren genom en separat känd kanal när dess identitet spelar roll. Signaturkontrollen visar att paketet signerats av motsvarande nyckel; den avgör inte om avsändaren är trovärdig inom ett ämne.
-
-Exporten omfattar posterna. Bilagornas innehåll, medlemsbehörigheter och registret över nodtillit ingår inte. Bilagereferenser och kontrollsummor kan följa med posterna, men en importerad referens innebär inte att filen finns hos mottagaren. Överför nödvändiga bilagor separat och kontrollera deras hashvärden.
-
-Detta är manuell överföring mellan separata arbetsytor. Någon automatisk synkronisering, sammanslagning av konflikter eller decentraliserad konsensus ingår inte.
-
-## Kör webbversionen lokalt
-
-Node.js 22.13 eller senare krävs. Kör från repots rot:
+Use Node.js 22.13 or later. From the repository root:
 
 ```sh
 cd web
 npm ci
-```
-
-Webbservern använder databasbindningen `DB`, objektlagringen `ATTACHMENTS` och hemligheten `CIVOS_SIGNING_KEY`. Lokalt ligger signeringsnyckeln i den ignorerade filen `.dev.vars` i `web/`. Nyckeln ska vara en privat Ed25519-nyckel i JWK-format. Den ska aldrig läggas i klientkod, versionshantering eller ett exportpaket.
-
-Skapa en lokal signeringsnyckel, kör databasens migrationer och starta utvecklingsservern:
-
-```sh
 npm run setup:key
 npm run db:migrate
 npm run dev
 ```
 
-Öppna den adress som servern skriver ut och använd sidans inloggning. Utvecklingsmiljön tilldelar en lokal testidentitet. Den privata publiceringen använder värdplattformens inloggning. Ett vanligt namn i en förfrågan är inte en säker ersättning.
+Open the printed localhost address and sign in. Development uses a local test identity. The private hosted installation uses platform authentication. Storage bindings are `DB` and `ATTACHMENTS`; `CIVOS_SIGNING_KEY` is the server's private Ed25519 JWK. The ignored `.dev.vars` file holds the local key. Keep it out of client code, Git, and shared archives.
 
-Kontrollera typningen och produktionsbygget:
+With the local server running:
 
 ```sh
+npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
 
-Se den fullständiga [installationsguiden](articles/civos-installationsguide.md) för migrationer, nyckelgenerering och kontroll av installationen.
+Use `npm run test:ci` when no development server is running; it starts and stops one. Tests cover exact arithmetic, constraints, certificates, saved analyses, changed evidence, decisions, replay, signed import/export, concurrency, and attachments. See the [installation guide](articles/civos-installationsguide.md) for the complete record workflow.
 
-## Kontrollera ett helt arbetsflöde
+Operational limits are 1,900 records and 1.5 MB of canonical history per workspace, 2 MB per transfer file, and 5 MB per attachment. Additional accounts need both installation access and a workspace invitation.
 
-Skapa ett syntetiskt ärende om ett enstaka öppettillfälle i en föreningslokal. Låt medlemsbehov och bemanning vara två perspektiv. Registrera underlagen, relationen mellan deras begrepp, två skilda bedömningar och argument från båda grupperna. Välj alternativ först när regelns granskningskrav är uppfyllda.
+## Repository and research
 
-Registrera ett mål om minst tolv besökare och ett utfall på åtta. Kontrollera att målet markeras som missat. Föreslå därefter en ändrad arbetsregel som skiljer enkätsvar från bekräftade anmälningar. Anta den och kontrollera att nästa beslut kräver den nya regelversionen. Exportera ärendet, importera det som en isolerad gren och fortsätt med lokal granskning.
+The separate Python 0.2 prototype in `civos/` uses SQLite, five record kinds, and an offline HTML report. Its unsigned export format is different from the web format and cannot be imported directly into the web application. Run its tests with `python -m unittest discover -s tests -v`.
 
-Detta provar funktionerna. En verklig pilot behöver dessutom jämföra nyttan med befintliga arbetssätt: hur snabbt en annan person kan återfinna skäl, invändningar, ansvar, senaste rättelse och utfall, och hur mycket arbete registreringen kräver. Inga uppmätta organisationsvinster eller genomförda samhällspiloter hävdas här.
+- [Architecture and instruction set](articles/civos-instruction-set.md)
+- [Computational models](articles/civos-models.md)
+- [Installation and trial](articles/civos-installationsguide.md)
+- [Knowledge, authority, and correction](philosophical-basis.md)
+- [Pilot evaluation protocol](docs/pilot-protocol.md), originally scoped to the CLI prototype
+- [Contribution guide](CONTRIBUTING.md)
 
-## Begränsningar
+This is working pilot software. No real-world organizational benefit or society-scale deployment is claimed. The next empirical test is whether another participant can reconstruct and challenge a decision more accurately, with an acceptable recording burden, than with the group's existing tools.
 
-CivOS skapar inte saklig sanning, ett legitimt mandat, verklig representation eller konsensus genom att registrera information. Signering ersätter inte källkritik. Flera konton ersätter inte oberoende granskare. Ett dokumenterat beslut utför inte handlingen och bevisar inte att den är berättigad.
-
-Hashkedjan gör historiken kontrollerbar. Den som kontrollerar både databas och nodens privata nyckel kan skriva om och signera en ny historia. Oberoende bevarade exporter och tidigare kända fingeravtryck ger mottagare underlag för jämförelse.
-
-Historiken bevarar tidigare versioner. En revision raderar inte personuppgifter ur redan delade kopior. Börja med material som deltagarna har rätt att registrera och dela.
-
-## Kod och texter
-
-- [`web/`](web/) — webbversionen.
-- [`civos/`](civos/) och [`tests/`](tests/) — Python-prototypen 0.2 och dess tester.
-- [`articles/civos-instruction-set.md`](articles/civos-instruction-set.md) — arkitektur och tekniska avgränsningar.
-- [`articles/civos-installationsguide.md`](articles/civos-installationsguide.md) — installation och sammanhängande provkörning.
-- [`docs/pilot-protocol.md`](docs/pilot-protocol.md) — förslag till jämförande utvärdering; versionsspecifika uppgifter om 0.2 måste läsas som sådana.
-
-Kod licensieras enligt MIT. Texter och koncept licensieras enligt CC BY-SA 4.0. Se [`LICENSE`](LICENSE).
-
-
-Driftgränser: högst 1 900 poster och 1,5 MB kanonisk posthistorik per arbetsyta, 2 MB per överföringsfil och 5 MB per bilaga. Ärenden har beständiga ID:n och kan inte revideras. Vidareexport av en skrivskyddad import bevarar originalkuvert och signatur. En lokal fortsättning exporterar signerade ursprungsuppgifter: basens slutvärde och sekvens, ursprungsnod, nyckelfingeravtryck och originalkuvertets hash. Originalkvittot bevaras lokalt.
+Code is MIT licensed. Texts and concepts are CC BY-SA 4.0. See [LICENSE](LICENSE).

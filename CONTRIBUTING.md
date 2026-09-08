@@ -1,8 +1,21 @@
 # Contributing to CivOS
 
-CivOS currently implements a local decision ledger. Contributions should improve an observable behavior, clarify a design claim, or make a limitation easier to test. Read the [README](README.md), [technical overview](technical-overview.md), [philosophical basis](philosophical-basis.md), and [threat model](thedarkmirror).
+CivOS implements an account-controlled web workspace with explicit affine models, versioned evidence, review, decisions, and follow-up, alongside the earlier Python ledger. Contributions should improve an observable behavior, clarify a design claim, or make a limitation easier to test. Read the [README](README.md), [technical overview](technical-overview.md), [philosophical basis](philosophical-basis.md), and [threat model](thedarkmirror).
 
-## Run the project
+## Check the web application
+
+Use Node.js 22.13 or later. From `web/`, install dependencies with `npm ci`, create the local key with `npm run setup:key`, and apply migrations with `npm run db:migrate`. Then run:
+
+```sh
+npm run lint
+npm run typecheck
+npm run test:ci
+npm run build
+```
+
+`test:ci` starts and stops a local server. Use `npm test` instead when one is already running. Include a regression for changed mathematical or historical semantics. Preserve exact ties, conditional guarantees, historical references, and separate perspective scales. Read the [model guide](articles/civos-models.md) before changing the kernel.
+
+## Run the legacy Python prototype
 
 Use Python 3.10 or later with SQLite support. The implementation uses the Python standard library; no package installation is required.
 
@@ -28,7 +41,7 @@ Use the [repository](https://github.com/krisledel/civos) for issues and pull req
 
 ## Bug reports
 
-Include the Python version, operating system, exact command, expected behavior, actual output, and the smallest synthetic input that reproduces the problem. Say whether the database was new or already contained records. Do not attach private records, credentials, or identifying testimony.
+Include the Node.js or Python version, operating system, exact command, expected behavior, actual output, and the smallest synthetic input that reproduces the problem. Say whether the database was new or already contained records. Do not attach private records, credentials, or identifying testimony.
 
 For a hash-chain issue, distinguish three cases: an inconsistent chain, a mismatch with an independently retained expected head, and a rewritten but internally consistent history. Internal verification cannot by itself identify the third case.
 

@@ -2,7 +2,7 @@
 
 CivOS is a research and design project about the connection between reasons, decisions, and consequences. Its working hypothesis is that a group can make decisions easier to inspect and revise if it preserves the path from a specific claim, through evidence and assessment, to an accountable decision and an observed outcome.
 
-The hypothesis concerns an institutional practice. The current implementation tests a small part of it: a local record system. Neither the hypothesis nor the software establishes that a decision is true, fair, or legitimate.
+The hypothesis concerns an institutional practice. The current web implementation provides account-controlled case histories and explicit computational models. The kernel tests consequences of declared equations, bounds, and constraints while preserving the evidence versions used in decisions. Neither the hypothesis nor the software establishes that a decision is true, fair, or legitimate.
 
 ## The problem to investigate
 
@@ -44,7 +44,7 @@ An objection must remain visible even when a decision proceeds. Agreement is nei
 
 In the application, a correction is a new record that can supersede an earlier one. The original remains available. Readers should be able to reconstruct what was known when a decision was made, rather than mistake the latest interpretation for the original rationale.
 
-This persistence creates a data responsibility. The prototype has no consent workflow, access control, or selective erasure mechanism. Sensitive testimony and identifying information do not belong in an experimental ledger. Store only material suitable for retention and sharing; keep protected source material in an appropriate system under its custodian's control.
+This persistence creates a data responsibility. The web application enforces account access and workspace roles; the legacy CLI relies on a local custodian. Neither establishes consent, source truth, legitimate representation, or deletion from copies already shared. Store only material suitable for retention and sharing; keep protected source material in an appropriate system under its custodian's control.
 
 ## What the name commits us to
 
@@ -61,6 +61,10 @@ Set a minimum useful improvement and a maximum acceptable burden before collecti
 The hypothesis fails for that setting if CivOS does not improve reconstruction enough to justify its cost, if participants cannot correct their representation, or if the format systematically hides material disagreement. Stop or redesign when those conditions occur. A polished demonstration cannot answer these questions.
 
 ## Present implementation
+
+The web application has 19 record types spanning evidence, perspectives, review, computational models, decisions, outcomes, and rule changes. Its affine kernel uses separate perspective scores, exact comparisons, hard constraints, and bounded uncertainty. New evidence can flag an analysis and attached decision without rewriting their original result. The [model guide](articles/civos-models.md) describes what these calculations establish and where their guarantees stop.
+
+### Legacy CLI 0.2
 
 The repository contains a Python 3.10+ prototype using SQLite and the standard library. It stores five record kinds: claim, evidence, assessment, decision, and outcome. It can check its record chain, export data, and produce a readable report. It runs locally. Human participants remain responsible for review, authorization, and action.
 

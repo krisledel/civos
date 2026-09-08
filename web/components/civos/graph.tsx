@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { kinds, active, type Entry } from '@/lib/model';
 type Edge = { from: string; to: string; label: string };
 const palette: Record<string, string> = {
+  models: '#e3b66d',
   overview: '#b7bdbe',
   observe: '#9da3a5',
   frames: '#c2c3c9',
@@ -352,6 +353,7 @@ export function RecordGraph({
                     (
                       {
                         overview: 'Case',
+                        models: 'Models',
                         observe: 'Evidence',
                         frames: 'Perspectives',
                         trust: 'Review',

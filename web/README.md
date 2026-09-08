@@ -1,14 +1,12 @@
-# CivOS webbversion
+# CivOS web application
 
 Kris Ledel
 
-Arbetsyta för observationer, perspektiv, granskning, beslut, uppföljning och förändring av arbetsregler.
+Case workspace for evidence, perspectives, explicit affine models, review, decisions, outcomes, and working-rule revisions. The Models view supports live scenarios, exact thresholds, hard constraints, measurements, and saved analyses linked to decision history. See the [model guide](public/articles/civos-models.html).
 
-Gränssnittet har dokumentträd, snabböppning med Ctrl+K, en beständig läspanel med bakåtlänkar och en klickbar sambandsgraf. Grafen visar högst 80 dokument åt gången och kan avgränsas till ett ärende eller en sökning.
+## Local development
 
-## Lokal start
-
-Node.js 22.13 eller senare.
+Use Node.js 22.13 or later:
 
 ```sh
 npm ci
@@ -17,9 +15,9 @@ npm run db:migrate
 npm run dev
 ```
 
-Öppna http://localhost:3000 och välj Logga in. Utvecklingsläget använder en lokal testidentitet. Håll utvecklingsservern på din egen dator. Produktion kräver en autentiserande ingress som sätter stabila användaridentiteter och rensar klientskickade identitetsheaders; den privata värdplattformen tillhandahåller den ingressen.
+Open the printed localhost URL and choose Sign in. Development provides a local test identity. Production requires an authenticating ingress that supplies stable identities and strips client-supplied identity headers; the private hosting platform provides it.
 
-## Kontrollera
+## Checks
 
 ```sh
 npm run lint
@@ -28,10 +26,10 @@ npm test
 npm run build
 ```
 
-Integrationstestet kräver den lokala servern och skapar tydligt syntetiska testarbetsytor. Det provar hela postflödet, samtidighet, felaktiga hänvisningar, signaturer, importer, lokal omgranskning och bilagor.
+`npm test` runs kernel, record-replay and API integration checks against an existing localhost server. `npm run test:ci` starts and stops the server itself. Tests create synthetic workspaces and cover the computational workflow, exact arithmetic, evidence changes, decision checks, history, signatures, imports, concurrency, and attachments.
 
-## Drift
+## Runtime
 
-DB binder en D1-databas; ATTACHMENTS binder en R2-bucket. Drizzle-migrationerna i drizzle/ ska tillämpas innan start. CIVOS_SIGNING_KEY är en privat Ed25519 JWK som ska konfigureras som runtime-hemlighet. Lokal .dev.vars är ignorerad av Git. Säkerhetskopiera databas, bilagor och nyckel separat. Postexporten är ingen fullständig driftbackup.
+`DB` binds D1; `ATTACHMENTS` binds R2. Apply migrations in `drizzle/` before use. `CIVOS_SIGNING_KEY` is a private Ed25519 JWK configured as a runtime secret. The local `.dev.vars` file is ignored. Back up the database, attachments, and key separately; record exports are not complete operational backups.
 
-Högst 1 900 poster och 1,5 MB historik per arbetsyta; importer högst 2 MB; bilagor högst 5 MB. Privat installation är avsedd för ägarens pilot. Fler konton behöver både åtkomst till installationen och en arbetsyteinbjudan.
+Limits: 1,900 records and 1.5 MB of history per workspace, 2 MB per import, and 5 MB per attachment. Models have separate expression, coefficient-precision, and input limits described in the guide. Further accounts need installation access and a workspace invitation.

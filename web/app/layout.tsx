@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './workbench.css';
+import './models.css';
 export const metadata: Metadata = {
   title: 'CivOS — Kris Ledel',
   description:

@@ -60,15 +60,34 @@ Participants can propose a rule change and connect it to the cases, assessments,
 
 This closes a practical loop: evidence informs action; outcomes inform a review of the process; the process changes through a recorded decision. The loop remains open to criticism because neither the old evidence nor the old rules disappear.
 
+## Models compute consequences of stated assumptions
+
+The computational workbench connects registered options and perspectives to explicit affine equations, input bounds, and hard constraints. Each perspective defines its own score scale. Higher scores are preferred within that perspective. The application keeps those scales separate and compares which options each perspective prefers.
+
+Inputs are declared as evidence, assumptions, or value judgments. These categories belong to the author; the software does not infer or validate them. Moving a reference value explores a scenario. Recording a sourced measurement supplies a new interval. Neither action silently changes a perspective's values.
+
+For an expression `f(x) = c + Σ aᵢxᵢ`, with each input bounded by `[lᵢ,uᵢ]`, the exact lower bound is `c + Σ min(aᵢlᵢ,aᵢuᵢ)` and the upper bound uses `max`. The uncertainty set is the entire Cartesian box. No probabilities or correlations are inferred. Comparisons operate on the difference between two score expressions before bounding it, so shared input terms cancel correctly.
+
+An option receives a guaranteed-preference certificate when every modeled hard constraint holds throughout the box and its score is at least as high as every competitor the test has not proved impossible. This is a sufficient, conservative certificate; its absence does not prove that no acceptable option exists. Pointwise winners, including ties, are shown separately. The kernel also calculates exact switching boundaries while holding other inputs at their reference values, and sufficient measurement ranges that retain all other input uncertainty.
+
+For example, two synthetic cost scores `80 - 8 * price` and `20 + 7 * price` tie at `price = 4`. Moving the reference value above 4 changes the pointwise preference. Narrowing the evidence interval to `[4.2,4.8]` establishes a preference throughout that interval. A separate hard constraint can still exclude the higher-scoring option. The [computational-model guide](civos-models.md) provides the complete two-perspective example, including a failed constraint and revision handling.
+
+The `civos.affine.v1` implementation supports 1–8 inputs, 2–6 options, 1–4 perspectives and up to four constraints per option and perspective. It uses rational arithmetic for represented inputs, with rounded decimal display. Nonlinear expressions are rejected. A bounded parser, coefficient-precision budget, and exact-arithmetic limits constrain calculation size. These are standard affine and interval calculations; their integration with perspective-specific models, evidence versions, and decision history is the implemented contribution.
+
+Saving an analysis records the exact model version, selected measurements, scenario, kernel version, and history-prefix hash and sequence. The server recalculates the stored summary; replay checks it again. New evidence can flag the analysis and attached decisions for review. Model, option, perspective, and source revisions preserve old references and block the earlier basis pending review. Conflicting measurements require an explicit choice. Saved analyses are immutable; a changed basis requires a new analysis.
+
+A decision can attach a current local analysis containing its chosen option. The option must satisfy all modeled hard constraints at the saved reference values. The application does not require it to be preferred or guaranteed feasible across every bound; those judgments remain visible for the decision's rationale. Existing review, responsibility, working-rule, and follow-up requirements still apply.
+
 ## The complete record model
 
-The implementation contains sixteen record types:
+The implementation contains nineteen record types:
 
 | Function | Types |
 | --- | --- |
 | Scope and participants | `case`, `actor` |
 | Observation and provenance | `source`, `observation` |
 | Interpretation | `frame`, `concept`, `mapping` |
+| Computational models | `model`, `model_measurement`, `model_run` |
 | Review | `assessment` |
 | Deliberation and action | `option`, `argument`, `decision`, `task` |
 | Feedback | `outcome` |

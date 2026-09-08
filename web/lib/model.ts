@@ -1,3 +1,4 @@
+import { validateKernel, kernelFindings } from './kernel-records';
 export type Data = Record<string, string | number | boolean | string[]>;
 export type Field = {
   key: string;
@@ -15,6 +16,7 @@ export type Field = {
   options?: string[];
   targets?: string[];
   hint?: string;
+  maxLength?: number;
 };
 export type Kind = {
   label: string;
@@ -244,6 +246,7 @@ export const kinds: Record<string, Kind> = {
       f('unit', 'Unit'),
       f('stopCondition', 'Stop condition', { type: 'long' }),
       ref('policyId', 'Working rule', ['policy']),
+      ref('modelRunId', 'Saved model analysis', ['model_run'], false, false),
     ],
   },
   task: {
@@ -325,6 +328,59 @@ export const kinds: Record<string, Kind> = {
         ['decision', 'assessment', 'outcome', 'case'],
         true,
       ),
+    ],
+  },
+  model: {
+    label: 'Model',
+    plural: 'Models',
+    layer: 'models',
+    fields: [
+      f('title', 'Model name'),
+      f('definition', 'Executable definition', {
+        type: 'long',
+        maxLength: 24000,
+      }),
+      ref('optionIds', 'Modeled options', ['option'], true),
+      ref('frameIds', 'Modeled perspectives', ['frame'], true),
+      ref('sourceIds', 'Supporting sources', ['source'], true, false),
+      f('limitations', 'Scope and limitations', { type: 'long' }),
+    ],
+  },
+  model_measurement: {
+    label: 'Measurement',
+    plural: 'Measurements',
+    layer: 'models',
+    fields: [
+      f('title', 'Measurement name'),
+      ref('modelId', 'Exact model version', ['model']),
+      f('variable', 'Input name'),
+      f('unit', 'Declared unit'),
+      f('low', 'Lower bound', { type: 'number' }),
+      f('value', 'Reference value', { type: 'number' }),
+      f('high', 'Upper bound', { type: 'number' }),
+      ref('sourceIds', 'Measurement sources', ['source'], true),
+      f('method', 'Method and uncertainty', { type: 'long' }),
+    ],
+  },
+  model_run: {
+    label: 'Saved analysis',
+    plural: 'Saved analyses',
+    layer: 'models',
+    fields: [
+      f('title', 'Analysis name'),
+      ref('modelId', 'Exact model version', ['model']),
+      ref(
+        'measurementIds',
+        'Selected measurements',
+        ['model_measurement'],
+        true,
+        false,
+      ),
+      f('scenario', 'Scenario reference values', { type: 'long' }),
+      f('kernelVersion', 'Kernel version'),
+      f('baseSequence', 'History prefix length', { type: 'number' }),
+      f('baseHead', 'History prefix hash'),
+      f('result', 'Reproducible result', { type: 'long', maxLength: 24000 }),
     ],
   },
   rule_resolution: {
@@ -502,7 +558,11 @@ export function validate(
         throw new Problem(
           `${field.label}: enter no more than 50 distinct values.`,
         );
-    } else if (typeof v !== 'string' || !v.trim() || v.length > 8000)
+    } else if (
+      typeof v !== 'string' ||
+      !v.trim() ||
+      v.length > (field.maxLength || 8000)
+    )
       throw new Problem(`${field.label}: invalid or excessively long text.`);
     if (field.type === 'select' && !field.options?.includes(v as string))
       throw new Problem(`${field.label}: select an option.`);
@@ -537,6 +597,11 @@ export function validate(
       prior.some((e) => e.supersedes === old.id)
     )
       throw new Problem('Revise the latest version of the same record.', 409);
+  }
+  try {
+    validateKernel(p, prior, restoring, localStart);
+  } catch (e) {
+    throw new Problem(e instanceof Error ? e.message : 'Invalid model record.');
   }
   if (p.kind === 'source') {
     try {
@@ -573,7 +638,9 @@ export function validate(
       Number(p.data.reviewDays) < 1 ||
       Number(p.data.reviewDays) > 3650
     )
-      throw new Problem('The follow-up period must be between 1 and 3,650 days.');
+      throw new Problem(
+        'The follow-up period must be between 1 and 3,650 days.',
+      );
   }
   if (p.kind === 'outcome') {
     const d = byId.get(str(p.data, 'decisionId'))!;
@@ -848,7 +915,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
         });
     }
   }
-  return out;
+  return [...out, ...kernelFindings(entries)];
 }
 export function meetsTarget(outcome: Entry, decision: Entry) {
   const v = Number(outcome.data.value),
