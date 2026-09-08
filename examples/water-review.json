@@ -1,0 +1,161 @@
+[
+  {
+    "id": "claim-drainage",
+    "kind": "claim",
+    "author": "Inspection team (fictional)",
+    "created_at": "2026-09-01T09:00:00Z",
+    "statement": "The east culvert can carry the flow expected in the September planning scenario.",
+    "context": "Fictional Brookside association; east culvert; a planning exercise for September 2026, not a real flood forecast.",
+    "assumptions": [
+      "The inlet remains clear of debris.",
+      "The historical cross-section still represents the culvert."
+    ],
+    "limitations": [
+      "No calibrated flow measurement.",
+      "This fixture contains invented observations."
+    ]
+  },
+  {
+    "id": "claim-access",
+    "kind": "claim",
+    "author": "Residents group (fictional)",
+    "created_at": "2026-09-01T09:00:00Z",
+    "statement": "The north access route can remain open during a one-day culvert inspection.",
+    "context": "Fictional Brookside association; foot access for eight households during a proposed inspection.",
+    "assumptions": [
+      "Inspection equipment stays within the marked work area."
+    ],
+    "limitations": [
+      "Emergency access has not been assessed."
+    ]
+  },
+  {
+    "id": "evidence-map",
+    "kind": "evidence",
+    "author": "Inspection team (fictional)",
+    "created_at": "2026-09-02T09:00:00Z",
+    "claim_id": "claim-drainage",
+    "stance": "supports",
+    "source_uri": "urn:civos:demo:culvert-plan",
+    "summary": "The fictional design plan shows capacity above the assumed planning flow.",
+    "method": "Compare a design drawing with the stated planning scenario; no field calibration.",
+    "limitations": [
+      "The design drawing predates recent debris accumulation."
+    ]
+  },
+  {
+    "id": "evidence-debris",
+    "kind": "evidence",
+    "author": "Residents group (fictional)",
+    "created_at": "2026-09-02T09:00:00Z",
+    "claim_id": "claim-drainage",
+    "stance": "disputes",
+    "source_uri": "urn:civos:demo:resident-log",
+    "summary": "The invented resident log describes backed-up water and debris at the inlet.",
+    "method": "Structured recollection from two observers after the fictional rainfall exercise.",
+    "limitations": [
+      "No measured flow.",
+      "The observations may share the same underlying event."
+    ]
+  },
+  {
+    "id": "evidence-route",
+    "kind": "evidence",
+    "author": "Access coordinator (fictional)",
+    "created_at": "2026-09-02T09:00:00Z",
+    "claim_id": "claim-access",
+    "stance": "supports",
+    "source_uri": "urn:civos:demo:route-walk",
+    "summary": "A fictional route walk found space for a temporary pedestrian corridor.",
+    "method": "Walk the proposed path using the equipment footprint on the plan.",
+    "limitations": [
+      "Does not establish accessibility for every resident."
+    ]
+  },
+  {
+    "id": "assessment-design",
+    "kind": "assessment",
+    "author": "Design reviewer (fictional)",
+    "created_at": "2026-09-03T09:00:00Z",
+    "claim_id": "claim-drainage",
+    "evidence_ids": [
+      "evidence-map"
+    ],
+    "verdict": "supports",
+    "rationale": "The design comparison supports the capacity claim under the clear-inlet assumption; it does not establish current inlet condition."
+  },
+  {
+    "id": "assessment-residents",
+    "kind": "assessment",
+    "author": "Resident reviewer (fictional)",
+    "created_at": "2026-09-03T09:00:00Z",
+    "claim_id": "claim-drainage",
+    "evidence_ids": [
+      "evidence-debris"
+    ],
+    "verdict": "disputes",
+    "rationale": "Observed backup challenges the clear-inlet assumption. The design alone is insufficient for a current capacity conclusion."
+  },
+  {
+    "id": "assessment-access",
+    "kind": "assessment",
+    "author": "Access reviewer (fictional)",
+    "created_at": "2026-09-03T09:00:00Z",
+    "claim_id": "claim-access",
+    "evidence_ids": [
+      "evidence-route"
+    ],
+    "verdict": "uncertain",
+    "rationale": "The route appears feasible, but residents with mobility constraints have not yet reviewed it."
+  },
+  {
+    "id": "decision-inspect",
+    "kind": "decision",
+    "author": "Planning group (fictional)",
+    "created_at": "2026-09-04T09:00:00Z",
+    "claim_ids": [
+      "claim-drainage"
+    ],
+    "action": "Inspect and document the inlet before any capacity-dependent work is approved.",
+    "rationale": "The conflicting accounts can be narrowed by checking the condition on which the drawing-based estimate depends.",
+    "owner": "Inspection coordinator (fictional)",
+    "alternatives": [
+      "Accept the design estimate without inspection.",
+      "Commission a full model before inspecting."
+    ],
+    "dissent": "The resident reviewer objects to describing the culvert as currently adequate.",
+    "review_at": "2026-09-07T12:00:00Z",
+    "success_criteria": "Record inlet condition, photographs and measurements sufficient to decide whether a separate capacity study is needed.",
+    "stop_condition": "Stop the inspection if access or weather makes the work unsafe; arrange a qualified inspection."
+  },
+  {
+    "id": "decision-access",
+    "kind": "decision",
+    "author": "Planning group (fictional)",
+    "created_at": "2026-09-04T09:00:00Z",
+    "claim_ids": [
+      "claim-access"
+    ],
+    "action": "Ask affected residents to review the temporary access arrangement before setting an inspection date.",
+    "rationale": "A route walk cannot establish that the arrangement works for all affected residents.",
+    "owner": "Access coordinator (fictional)",
+    "alternatives": [
+      "Set the inspection date immediately.",
+      "Close the route for the day."
+    ],
+    "dissent": "The route must not be treated as accessible until affected residents have responded.",
+    "review_at": "2026-09-06T12:00:00Z",
+    "success_criteria": "Record responses from the affected households and document any unresolved access needs.",
+    "stop_condition": "Do not schedule a closure while an affected household lacks an agreed access arrangement."
+  },
+  {
+    "id": "outcome-inspect",
+    "kind": "outcome",
+    "author": "Inspection coordinator (fictional)",
+    "created_at": "2026-09-07T09:00:00Z",
+    "decision_id": "decision-inspect",
+    "observation": "In the fictional exercise the inlet was partly blocked. The inspection recorded its condition but could not establish hydraulic capacity.",
+    "result": "inconclusive",
+    "next_action": "Request a qualified capacity assessment using the current inlet condition; keep the original disagreement attached."
+  }
+]

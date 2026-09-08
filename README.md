@@ -1,111 +1,97 @@
-# CivOS: A Framework for Epistemic Coordination
+# CivOS
 
-<p align="center">
-  <em>A speculative architecture for rebuilding coherence in fractured information landscapes</em>
-</p>
+**Trace a decision from its evidence to its consequences.**
 
-<p align="center">
-  <a href="#about">About</a> •
-  <a href="#key-concepts">Key Concepts</a> •
-  <a href="#speculative-implementation">Speculative Implementation</a> •
-  <a href="#use-cases">Use Cases</a> •
-  <a href="#contributing">Contributing</a> •
-  <a href="#license">License</a>
-</p>
+Kris Ledel
 
-## About
+CivOS records what was claimed, which evidence was used, who disagreed, who took responsibility, and what happened afterward. Its research question is whether keeping these connections intact improves collective decisions under uncertainty.
 
-> **Note:** This is a conceptual project, not a functioning software system. The code examples and designs represent speculative architectures rather than tested implementations.
+Version 0.2 is a working local prototype: a Python command line tool, a SQLite ledger, portable JSON, and an offline HTML review report. The broader architecture remains a proposal. There are no field results yet.
 
-CivOS is a conceptual framework for improving epistemic coordination across different knowledge systems and actors. The project explores how we might rebuild collective sense-making capabilities in an environment of information abundance, synthetic media, and epistemic fragmentation.
+## Run the example
 
-> "We are not facing an information problem. We are facing an epistemic fracture—a civilizational rupture in our ability to reliably distinguish the real from the simulated, the signal from the noise, the credible from the performative."
+Requires **Python 3.10 or later**, including its standard SQLite module. No package installation, account, API key, model, or network connection is required after downloading the source.
 
-Rather than a single application or platform, CivOS presents speculative designs for interoperable protocols, standards, and architectures that could enhance:
+From the repository directory:
 
-- Information provenance and contextual richness
-- Cross-domain knowledge integration
-- Distributed trust and verification
-- Transparent decision processes
-- Feedback coherence in complex systems
+```sh
+python -m civos --db work/demo.sqlite3 demo
+python -m civos --db work/demo.sqlite3 verify
+python -m civos --db work/demo.sqlite3 report --as-of 2026-09-08T12:00:00Z --output work/report.html
+```
 
-## Key Concepts
+Open `work/report.html` in a browser. On Windows, `py -3` can replace `python` if that is how Python is installed. On other systems the executable may be `python3`.
 
-CivOS is built on several foundational concepts:
+The fictional drainage example contains **11 records, two decisions, one disputed claim, and one review overdue without a recorded outcome** at the specified review clock. One inspection has an inconclusive outcome; another decision still awaits access review. Every person, observation and location in the fixture is invented.
 
-### 1. Recursive Architecture
+`demo` requires an empty database. Output commands refuse to replace existing files. Use a new database or output name for a second run.
 
-CivOS envisions a recursive system where each component shapes and is shaped by the others. This design philosophy would enable continuous learning and adaptation without requiring centralized control.
+## The record model
 
-### 2. Distributed Agency
+| Record | What it preserves |
+| --- | --- |
+| Claim | A statement, its context, assumptions and limitations |
+| Evidence | A source reference, method, summary and stance toward one claim |
+| Assessment | A named person's judgment of evidence for one claim |
+| Decision | The claim basis, action, owner, alternatives, dissent, review time, success criteria and stop condition |
+| Outcome | An observation about a decision, its reported result and next action |
 
-Rather than centralizing epistemic authority, CivOS proposes distributing the ability to contribute, validate, and evolve knowledge across diverse participants while maintaining coherence.
+Assessments remain distinct even when they disagree. A source count is not a vote or a confidence estimate. An owner remains responsible for deciding whether to act.
 
-### 3. Context-Sensitivity
+The report flags disputed or unassessed bases, uncertain assessments, missing evidence, revised references, inconclusive outcomes and overdue reviews. These are prompts for inspection, not automated verdicts.
 
-Information is never context-free. CivOS explores structures for maintaining and transmitting relevant context alongside data, enabling meaningful interpretation across domains.
+## Add your own records
 
-### 4. Trust Substrate
+Copy [the example JSON](examples/water-review.json), replace its fictional content, and use fresh identifiers. Put referenced records before the records that use them.
 
-CivOS proposes mechanisms for verifiable, reputation-based trust that could travel with information across systems and domains, without requiring universal agreement.
+```sh
+python -m civos --db work/my-review.sqlite3 append my-records.json
+python -m civos --db work/my-review.sqlite3 list
+python -m civos --db work/my-review.sqlite3 report --output work/my-review.html
+```
 
-### 5. Coherence-Seeking
+An import succeeds as a whole or adds nothing. Wrong fields, malformed timestamps, duplicate IDs, missing references and evidence from the wrong claim are rejected. See the [record contract](docs/record-format.md) before adding revisions.
 
-The goal is not perfect consensus but "adaptive coherence"—sufficient shared understanding to enable meaningful coordination despite differences in perspective and values.
+## Export and check a copy
 
-## Speculative Implementation
+```sh
+python -m civos --db work/demo.sqlite3 export --output work/ledger.json
+python -m civos --db work/restored.sqlite3 restore work/ledger.json
+python -m civos --db work/restored.sqlite3 verify
+```
 
-This repository contains thought experiments about how CivOS principles might be implemented:
+Keep the `head` value returned by `verify` separately. To compare a restored copy with that **exact snapshot**, substitute the saved 64-character lowercase digest:
 
-### Hypothetical Architecture
+```sh
+python -m civos --db work/restored.sqlite3 verify --expected-head YOUR_SAVED_HEAD
+```
 
-The conceptual architecture includes five main components:
+A legitimate append changes the current head. An older checkpoint therefore does not match the new current head. The command compares exact snapshots; it does not prove that one ledger is a prefix of another.
 
-1. **Data Collection and Contextual Annotation**: Speculative designs for enriching information with relevant context, sources, and uncertainty measures.
+## What verification establishes
 
-2. **Knowledge Mapping & Ontological Interoperability**: Conceptual tools for representing, exchanging, and mapping different knowledge frames and taxonomies.
+Verification checks record structure, reference relationships, append order and SHA-256 hash continuity. It detects inconsistent edits. An independently retained head also detects a different exact snapshot, including truncation or a fully recomputed history.
 
-3. **Trust & Validation Framework**: Proposed mechanisms for distributed assessment of knowledge source reliability.
+Authors are self-declared. Local file permissions control access. Anyone able to rewrite the database can rewrite its entire chain; anyone allowed to append can submit a revision under another name. The prototype does not authenticate authors, archive source content, prove truth, infer causality, confer decision authority, or synchronize independent nodes. See [technical limits](technical-overview.md) and [failure modes](thedarkmirror).
 
-4. **Multi-Perspective Visualization & Deliberation**: Designs for interactive data visualization with multiple views and structured deliberation tools.
+## Development
 
-5. **Meta-Coordination & System Evaluation**: Processes and tools for continuously evaluating and improving the system's internal functioning.
+```sh
+python -m unittest discover -s tests -v
+```
 
-### Conceptual Code Examples
+The tests exercise invalid imports, rollback, concurrent writers, revision chains, tampering, checkpoints, export/restore and report escaping. The CI workflow runs the same suite on Windows and Linux; remote results depend on the actual workflow run.
 
-The repository includes speculative code examples that demonstrate how these concepts might be implemented using current technologies. These are thought experiments, not working code.
+## Read further
 
-## Use Cases
-
-CivOS concepts could potentially be applied in multiple domains:
-
-### Climate Knowledge Integration
-
-Tools for bridging scientific climate models with local knowledge systems, creating more robust and contextually relevant adaptation strategies.
-
-### Media Verification
-
-Decentralized verification infrastructures for tracking content provenance and contextualizing information in an age of synthetic media.
-
-### Participatory Governance
-
-Systems for transparent, multi-perspective policy development with traceable connections between stakeholder input and outcomes.
-
-## Contributing
-
-This is a speculative project, and we welcome contributions that expand the conceptual framework, propose new design ideas, or develop theoretical foundations. You don't need to be a developer to participate.
-
-## Documentation
-
-- [Philosophical Foundations](philosophical-basis.md)
-- [Conceptual Architecture](technical-overview.md)
+- [Technical overview](technical-overview.md)
+- [Record format](docs/record-format.md)
+- [Pilot protocol](docs/pilot-protocol.md)
+- [Philosophical basis](philosophical-basis.md)
+- [Climate example](climate-knowledge-integration.md)
+- [English article](articles/civos-instruction-set.md) / [Svensk installationsguide](articles/civos-installationsguide.md)
+- [Contributing](CONTRIBUTING.md) / [Code of conduct](CODE_OF_CONDUCT.md)
 
 ## License
 
-CivOS is released under the CC-BY-SA 4.0 license for documentation and concepts, and the MIT License for speculative code examples.
-
----
-
-<p align="center">
-  "We have not transcended ourselves. We have recompiled the conditions for coherence."
-</p>
+Documentation is offered under CC BY-SA 4.0; code under MIT, as specified in [LICENSE](LICENSE). Existing notices are retained.
