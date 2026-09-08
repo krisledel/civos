@@ -4,7 +4,7 @@ import './workbench.css';
 export const metadata: Metadata = {
   title: 'CivOS — Kris Ledel',
   description:
-    'Arbetsyta för kunskap, perspektiv, granskning, beslut och uppföljning.',
+    'A workspace for evidence, perspectives, review, decisions and follow-up.',
   authors: [{ name: 'Kris Ledel' }],
 };
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="sv" className="dark">
+    <html lang="en" className="dark">
       <body>{children}</body>
     </html>
   );

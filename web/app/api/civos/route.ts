@@ -31,8 +31,9 @@ const json = (value: unknown, status = 200) =>
   });
 function identity(req: Request): Person {
   const id = req.headers.get('oai-authenticated-user-id');
-  if (!id) throw new Problem('Logga in för att öppna arbetsytan.', 401);
-  let name = req.headers.get('oai-authenticated-user-full-name') || 'Deltagare';
+  if (!id) throw new Problem('Sign in to open the workspace.', 401);
+  let name =
+    req.headers.get('oai-authenticated-user-full-name') || 'Participant';
   try {
     if (
       req.headers.get('oai-authenticated-user-full-name-encoding') ===
@@ -49,11 +50,14 @@ function csrf(req: Request) {
     origin !== new URL(req.url).origin ||
     req.headers.get('sec-fetch-site') === 'cross-site'
   )
-    throw new Problem('Begäran måste komma från den egna arbetsytan.', 403);
+    throw new Problem(
+      'The request must come from the same workspace origin.',
+      403,
+    );
 }
 async function rawBody(req: Request, max: number) {
   const reader = req.body?.getReader();
-  if (!reader) throw new Problem('Innehåll saknas.');
+  if (!reader) throw new Problem('Request content is missing.');
   let n = 0;
   const chunks: Uint8Array[] = [];
   while (true) {
@@ -62,7 +66,7 @@ async function rawBody(req: Request, max: number) {
     n += x.value.length;
     if (n > max) {
       await reader.cancel();
-      throw new Problem('Innehållet är för stort.', 413);
+      throw new Problem('The request content is too large.', 413);
     }
     chunks.push(x.value);
   }
@@ -83,12 +87,12 @@ async function body(req: Request) {
     );
   } catch (e) {
     if (e instanceof Problem) throw e;
-    throw new Problem('Ogiltig JSON.');
+    throw new Problem('Invalid JSON.');
   }
 }
 const text = (x: unknown, max = 1000) => {
   if (typeof x !== 'string' || !x.trim() || x.length > max)
-    throw new Problem('Obligatorisk text saknas eller är för lång.');
+    throw new Problem('Required text is missing or too long.');
   return x.trim();
 };
 async function guard(fn: () => Promise<Response>) {
@@ -100,7 +104,10 @@ async function guard(fn: () => Promise<Response>) {
       'CivOS request failed',
       e instanceof Error ? e.name + ': ' + e.message : 'Unknown',
     );
-    return json({ error: 'Åtgärden kunde inte slutföras. Försök igen.' }, 500);
+    return json(
+      { error: 'The action could not be completed. Try again.' },
+      500,
+    );
   }
 }
 export async function GET(req: Request) {
@@ -115,9 +122,9 @@ export async function GET(req: Request) {
         .prepare('SELECT * FROM attachments WHERE id=? AND space_id=?')
         .bind(url.searchParams.get('attachment'), id)
         .first<{ object_key: string; name: string; type: string }>();
-      if (!a) throw new Problem('Bilagan saknas.', 404);
+      if (!a) throw new Problem('The attachment is missing.', 404);
       const object = await env.ATTACHMENTS.get(a.object_key);
-      if (!object) throw new Problem('Bilagan saknas.', 404);
+      if (!object) throw new Problem('The attachment is missing.', 404);
       return new Response(object.body, {
         headers: {
           'Content-Type': 'application/octet-stream',
@@ -152,7 +159,7 @@ export async function GET(req: Request) {
           }
         : null;
       if (!env.CIVOS_SIGNING_KEY)
-        throw new Problem('Nodens signeringsnyckel är inte konfigurerad.', 503);
+        throw new Problem('The node signing key is not configured.', 503);
       const bundle = await signBundle(env.CIVOS_SIGNING_KEY, {
         node: hosting.project_id,
         workspace: s.id,
@@ -213,16 +220,16 @@ export async function POST(req: Request) {
         s = await getSpace(id, person);
       writable(s, 'source');
       if (Number(req.headers.get('content-length')) > 5_500_000)
-        throw new Problem('Bilagan får vara högst 5 MB.', 413);
+        throw new Problem('The attachment must not exceed 5 MB.', 413);
       const raw = await rawBody(req, 5_500_000);
       if (raw.byteLength > 5_500_000)
-        throw new Problem('Bilagan får vara högst 5 MB.', 413);
+        throw new Problem('The attachment must not exceed 5 MB.', 413);
       const data = await new Response(raw, {
           headers: { 'content-type': req.headers.get('content-type')! },
         }).formData(),
         file = data.get('file');
       if (!(file instanceof File) || file.size > 5_000_000 || file.size === 0)
-        throw new Problem('Välj en fil på högst 5 MB.');
+        throw new Problem('Choose a file no larger than 5 MB.');
       const bytes = await file.arrayBuffer(),
         hash = Array.from(
           new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
@@ -252,7 +259,7 @@ export async function POST(req: Request) {
           )
           .run();
         if (stored.meta.changes !== 1)
-          throw new Problem('Din åtkomst till arbetsytan har ändrats.', 403);
+          throw new Problem('Your access to the workspace has changed.', 403);
       } catch (e) {
         await env.ATTACHMENTS.delete(key);
         throw e;
@@ -260,10 +267,10 @@ export async function POST(req: Request) {
       return json({ id: aid, digest: hash, name: file.name });
     }
     if (!req.headers.get('content-type')?.startsWith('application/json'))
-      throw new Problem('Använd JSON.', 415);
+      throw new Problem('Use JSON.', 415);
     const b = await body(req);
     if (!b || typeof b !== 'object' || Array.isArray(b))
-      throw new Problem('Ogiltig begäran.');
+      throw new Problem('Invalid request.');
     if (b.action === 'create')
       return json(
         {
@@ -302,7 +309,11 @@ export async function POST(req: Request) {
         )
         .bind(hash, new Date().toISOString())
         .first<{ space_id: string; role: string }>();
-      if (!inv) throw new Problem('Inbjudan har gått ut eller använts.', 404);
+      if (!inv)
+        throw new Problem(
+          'The invitation has expired or has already been used.',
+          404,
+        );
       if (
         await db()
           .prepare(
@@ -311,7 +322,7 @@ export async function POST(req: Request) {
           .bind(inv.space_id, person.id)
           .first()
       )
-        throw new Problem('Du deltar redan i arbetsytan.');
+        throw new Problem('You are already a member of this workspace.');
       const result = await db().batch([
         db()
           .prepare(
@@ -325,13 +336,13 @@ export async function POST(req: Request) {
           .bind(person.id, hash),
       ]);
       if (result[0].meta.changes !== 1)
-        throw new Problem('Inbjudan har redan använts.', 409);
+        throw new Problem('The invitation has already been used.', 409);
       return json({ id: inv.space_id });
     }
     const s = await getSpace(text(b.space, 150), person);
     if (b.action === 'append') {
       if (!b.proposal || typeof b.proposal !== 'object')
-        throw new Problem('Posten saknas.');
+        throw new Problem('The record is missing.');
       return json(
         {
           added: await append(
@@ -347,11 +358,14 @@ export async function POST(req: Request) {
     if (b.action === 'fork')
       return json({ id: await forkSpace(s, person) }, 201);
     if (s.role !== 'owner')
-      throw new Problem('Endast ägaren får ändra åtkomst och nodtillit.', 403);
+      throw new Problem(
+        'Only the owner can change access and node trust.',
+        403,
+      );
     if (b.action === 'invite') {
       writable(s);
       if (!['editor', 'reviewer', 'viewer'].includes(b.role))
-        throw new Problem('Ogiltig roll.');
+        throw new Problem('Invalid role.');
       const token = crypto.randomUUID() + crypto.randomUUID(),
         expires = new Date(Date.now() + 86400000).toISOString();
       await db()
@@ -364,7 +378,7 @@ export async function POST(req: Request) {
     }
     if (b.action === 'revoke') {
       if (b.principal === s.owner)
-        throw new Problem('Ägarens åtkomst kan inte tas bort.');
+        throw new Problem('The workspace owner cannot be removed.');
       await db()
         .prepare('DELETE FROM members WHERE space_id=? AND principal=?')
         .bind(s.id, text(b.principal, 200))
@@ -377,7 +391,7 @@ export async function POST(req: Request) {
         !/^[a-f0-9]{64}$/.test(fingerprint) ||
         !['recognized', 'revoked'].includes(b.status)
       )
-        throw new Problem('Ogiltigt fingeravtryck eller status.');
+        throw new Problem('Invalid fingerprint or status.');
       await db()
         .prepare(
           'INSERT INTO trusted_keys(space_id,fingerprint,label,domain,status,reason,updated_at,issuer) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(space_id,fingerprint) DO UPDATE SET label=excluded.label,domain=excluded.domain,status=excluded.status,reason=excluded.reason,updated_at=excluded.updated_at,issuer=excluded.issuer',
@@ -395,6 +409,6 @@ export async function POST(req: Request) {
         .run();
       return json({ ok: true });
     }
-    throw new Problem('Okänd åtgärd.');
+    throw new Problem('Unknown action.');
   });
 }

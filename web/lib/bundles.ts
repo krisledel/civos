@@ -33,7 +33,7 @@ const bytes = (text: string) => {
     if (base64(data.buffer) !== text) throw Error();
     return data;
   } catch {
-    throw new Problem('Ogiltig nyckel eller signatur.');
+    throw new Problem('Invalid key or signature.');
   }
 };
 export async function signBundle(
@@ -48,7 +48,7 @@ export async function signBundle(
     !jwk.x ||
     (jwk.alg && !['EdDSA', 'Ed25519'].includes(jwk.alg))
   )
-    throw new Problem('Nodnyckeln måste vara en privat Ed25519-nyckel.', 503);
+    throw new Problem('The node key must be a private Ed25519 key.', 503);
   const key = await crypto.subtle.importKey(
     'jwk',
     { kty: jwk.kty, crv: jwk.crv, x: jwk.x, d: jwk.d, ext: true },
@@ -86,16 +86,16 @@ export async function signBundle(
 }
 export async function verifyBundle(text: string): Promise<Bundle> {
   if (new TextEncoder().encode(text).length > 2_000_000)
-    throw new Problem('Överföringen får vara högst 2 MB.');
+    throw new Problem('The transfer must not exceed 2 MB.');
   let b: Bundle;
   try {
     b = JSON.parse(text);
   } catch {
-    throw new Problem('Filen innehåller inte giltig JSON.');
+    throw new Problem('The file does not contain valid JSON.');
   }
   if (canonical(b) !== text.trim())
     throw new Problem(
-      'Överföringen måste ha CivOS kanoniska JSON-format. Ändra inte exportfilens formatering.',
+      'The transfer must use the CivOS canonical JSON format. Do not reformat the export file.',
     );
   if (
     !b ||
@@ -121,14 +121,14 @@ export async function verifyBundle(text: string): Promise<Bundle> {
         .sort()
         .join()
   )
-    throw new Problem('Okänt överföringsformat.');
+    throw new Problem('Unknown transfer format.');
   for (const k of ['node', 'workspace', 'title', 'exportedAt', 'head'] as const)
     if (
       typeof b.payload[k] !== 'string' ||
       !b.payload[k] ||
       b.payload[k].length > 500
     )
-      throw new Problem('Ofullständig överföringsmetadata.');
+      throw new Problem('Incomplete transfer metadata.');
   if (b.payload.lineage !== null) {
     const l = b.payload.lineage;
     if (
@@ -149,7 +149,7 @@ export async function verifyBundle(text: string): Promise<Bundle> {
         ? b.payload.records[l.baseSequence - 1]?.hash
         : '0'.repeat(64)) !== l.baseHead
     )
-      throw new Problem('Ogiltigt ursprung för grenen.');
+      throw new Problem('Invalid branch lineage.');
   }
   if (
     bytes(b.publicKey).length !== 32 ||
@@ -157,7 +157,7 @@ export async function verifyBundle(text: string): Promise<Bundle> {
     (await keyFingerprint(bytes(b.publicKey).buffer)) !== b.fingerprint
   )
     throw new Problem(
-      'Nyckelns fingeravtryck eller signaturformat stämmer inte.',
+      'The key fingerprint or signature format does not match.',
     );
   const { signature, ...body } = b;
   try {
@@ -176,10 +176,12 @@ export async function verifyBundle(text: string): Promise<Bundle> {
         new TextEncoder().encode('CivOS bundle v1\n' + canonical(body)),
       ))
     )
-      throw new Problem('Signaturen är ogiltig. Innehållet kan ha ändrats.');
+      throw new Problem(
+        'The signature is invalid. The content may have changed.',
+      );
   } catch (e) {
     if (e instanceof Problem) throw e;
-    throw new Problem('Signaturen kunde inte verifieras.');
+    throw new Problem('The signature could not be verified.');
   }
   await verifyEntries(b.payload.records, b.payload.head);
   return b;

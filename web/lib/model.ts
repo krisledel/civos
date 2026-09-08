@@ -39,68 +39,68 @@ const ref = (
   f(key, label, { type: multiple ? 'refs' : 'ref', targets, required });
 export const kinds: Record<string, Kind> = {
   case: {
-    label: 'Ärende',
-    plural: 'Ärenden',
+    label: 'Case',
+    plural: 'Cases',
     layer: 'overview',
     global: true,
     fields: [
-      f('title', 'Rubrik'),
-      f('question', 'Frågan som ska avgöras', { type: 'long' }),
-      f('domain', 'Sakområde'),
-      f('place', 'Plats eller sammanhang'),
-      f('groups', 'Berörda grupper', { type: 'list' }),
-      f('timeframe', 'Tidshorisont'),
+      f('title', 'Title'),
+      f('question', 'Question to resolve', { type: 'long' }),
+      f('domain', 'Domain'),
+      f('place', 'Place or context'),
+      f('groups', 'Affected groups', { type: 'list' }),
+      f('timeframe', 'Time horizon'),
     ],
   },
   actor: {
-    label: 'Deltagare',
-    plural: 'Deltagare',
+    label: 'Participant',
+    plural: 'Participants',
     layer: 'trust',
     global: true,
     fields: [
-      f('title', 'Namn'),
-      f('role', 'Roll eller uppdrag'),
-      f('groups', 'Grupper som personen företräder', { type: 'list' }),
-      f('domains', 'Kunskapsområden', { type: 'list' }),
-      f('interests', 'Intressen och anknytningar', { type: 'long' }),
+      f('title', 'Name'),
+      f('role', 'Role or responsibility'),
+      f('groups', 'Groups represented by this participant', { type: 'list' }),
+      f('domains', 'Areas of knowledge', { type: 'list' }),
+      f('interests', 'Interests and affiliations', { type: 'long' }),
     ],
   },
   source: {
-    label: 'Källa',
-    plural: 'Källor',
+    label: 'Source',
+    plural: 'Sources',
     layer: 'observe',
     fields: [
-      f('title', 'Källans namn'),
-      f('uri', 'Källadress', { hint: 'https://… eller urn:civos:…' }),
-      f('method', 'Hur uppgifterna samlades in', { type: 'long' }),
-      f('capturedAt', 'Källans datum', { type: 'date' }),
-      f('originGroup', 'Gemensamt ursprung', {
-        hint: 'Samma ursprung för kopior. Skriv okänt om det inte är fastställt.',
+      f('title', 'Source name'),
+      f('uri', 'Source reference', { hint: 'https://… or urn:civos:…' }),
+      f('method', 'How the information was collected', { type: 'long' }),
+      f('capturedAt', 'Source date', { type: 'date' }),
+      f('originGroup', 'Shared origin', {
+        hint: 'Use the same origin for copies. Enter unknown if the origin has not been established.',
       }),
-      f('limitations', 'Begränsningar', { type: 'long' }),
-      f('artifactId', 'Bilagans ID', { required: false }),
-      f('artifactDigest', 'Bilagans SHA-256', { required: false }),
+      f('limitations', 'Limitations', { type: 'long' }),
+      f('artifactId', 'Attachment ID', { required: false }),
+      f('artifactDigest', 'Attachment SHA-256', { required: false }),
     ],
   },
   observation: {
     label: 'Observation',
-    plural: 'Observationer',
+    plural: 'Observations',
     layer: 'observe',
     fields: [
-      f('title', 'Kort rubrik'),
-      f('statement', 'Uppgift eller påstående', { type: 'long' }),
-      f('category', 'Typ av uppgift', {
+      f('title', 'Short title'),
+      f('statement', 'Information or claim', { type: 'long' }),
+      f('category', 'Type of information', {
         type: 'select',
         options: ['observation', 'tolkning', 'prognos', 'värdering'],
       }),
-      ref('sourceIds', 'Underlag', ['source'], true),
-      ref('frameId', 'Tolkningsram', ['frame'], false, false),
-      f('observedAt', 'Tidpunkt', { type: 'date' }),
-      f('place', 'Plats och sammanhang'),
-      f('uncertainty', 'Osäkerhet och antaganden', { type: 'long' }),
+      ref('sourceIds', 'Evidence', ['source'], true),
+      ref('frameId', 'Perspective', ['frame'], false, false),
+      f('observedAt', 'Time', { type: 'date' }),
+      f('place', 'Place and context'),
+      f('uncertainty', 'Uncertainty and assumptions', { type: 'long' }),
       ref(
         'contradicts',
-        'Motsäger eller begränsar',
+        'Contradicts or qualifies',
         ['observation'],
         true,
         false,
@@ -108,38 +108,38 @@ export const kinds: Record<string, Kind> = {
     ],
   },
   frame: {
-    label: 'Perspektiv',
-    plural: 'Perspektiv',
+    label: 'Perspective',
+    plural: 'Perspectives',
     layer: 'frames',
     fields: [
-      f('title', 'Perspektivets namn'),
-      f('description', 'Vad perspektivet uppmärksammar', { type: 'long' }),
-      f('method', 'Sätt att undersöka och bedöma', { type: 'long' }),
-      f('assumptions', 'Antaganden', { type: 'list' }),
-      f('scope', 'Giltighetsområde'),
-      f('limitations', 'Vad perspektivet inte fångar', { type: 'long' }),
-      f('groups', 'Företrädda grupper', { type: 'list' }),
+      f('title', 'Perspective name'),
+      f('description', 'What this perspective considers', { type: 'long' }),
+      f('method', 'Method of inquiry and assessment', { type: 'long' }),
+      f('assumptions', 'Assumptions', { type: 'list' }),
+      f('scope', 'Scope of validity'),
+      f('limitations', 'What this perspective leaves out', { type: 'long' }),
+      f('groups', 'Represented groups', { type: 'list' }),
     ],
   },
   concept: {
-    label: 'Begrepp',
-    plural: 'Begrepp',
+    label: 'Concept',
+    plural: 'Concepts',
     layer: 'frames',
     fields: [
-      f('title', 'Begrepp'),
-      ref('frameId', 'Tillhör perspektivet', ['frame']),
-      f('definition', 'Betydelse i detta perspektiv', { type: 'long' }),
-      f('examples', 'Exempel och avgränsningar', { type: 'long' }),
+      f('title', 'Concept'),
+      ref('frameId', 'Belongs to perspective', ['frame']),
+      f('definition', 'Meaning in this perspective', { type: 'long' }),
+      f('examples', 'Examples and boundaries', { type: 'long' }),
     ],
   },
   mapping: {
-    label: 'Begreppsrelation',
-    plural: 'Begreppsrelationer',
+    label: 'Concept relation',
+    plural: 'Concept relations',
     layer: 'frames',
     fields: [
-      f('title', 'Relationens rubrik'),
-      ref('fromId', 'Från begrepp', ['concept']),
-      ref('toId', 'Till begrepp', ['concept']),
+      f('title', 'Relation title'),
+      ref('fromId', 'From concept', ['concept']),
+      ref('toId', 'To concept', ['concept']),
       f('relation', 'Relation', {
         type: 'select',
         options: [
@@ -150,32 +150,32 @@ export const kinds: Record<string, Kind> = {
           'likvärdiga inom angivet område',
         ],
       }),
-      f('scope', 'När jämförelsen gäller'),
-      f('loss', 'Vad som går förlorat i översättningen', { type: 'long' }),
-      f('rationale', 'Skäl och motexempel', { type: 'long' }),
+      f('scope', 'When the comparison applies'),
+      f('loss', 'What is lost in translation', { type: 'long' }),
+      f('rationale', 'Reasoning and counterexamples', { type: 'long' }),
     ],
   },
   assessment: {
-    label: 'Bedömning',
-    plural: 'Bedömningar',
+    label: 'Assessment',
+    plural: 'Assessments',
     layer: 'trust',
     fields: [
-      f('title', 'Bedömningens rubrik'),
-      ref('targetId', 'Bedömer', [
+      f('title', 'Assessment title'),
+      ref('targetId', 'Assesses', [
         'observation',
         'mapping',
         'option',
         'outcome',
       ]),
-      ref('actorId', 'Angiven granskare', ['actor']),
-      ref('frameId', 'Granskarens perspektiv', ['frame'], false, false),
-      f('verdict', 'Slutsats', {
+      ref('actorId', 'Named reviewer', ['actor']),
+      ref('frameId', 'Reviewer perspective', ['frame'], false, false),
+      f('verdict', 'Conclusion', {
         type: 'select',
         options: ['stödjer', 'invänder', 'osäkert'],
       }),
-      f('rationale', 'Skäl', { type: 'long' }),
-      f('method', 'Granskningsmetod'),
-      f('independence', 'Oberoende', {
+      f('rationale', 'Reasoning', { type: 'long' }),
+      f('method', 'Review method'),
+      f('independence', 'Independence', {
         type: 'select',
         options: [
           'inte fastställt',
@@ -183,40 +183,40 @@ export const kinds: Record<string, Kind> = {
           'självständigt granskat',
         ],
       }),
-      f('interests', 'Reservationer och intressen', { type: 'long' }),
-      ref('evidenceIds', 'Granskat underlag', ['source', 'observation'], true),
+      f('interests', 'Reservations and interests', { type: 'long' }),
+      ref('evidenceIds', 'Reviewed evidence', ['source', 'observation'], true),
     ],
   },
   option: {
-    label: 'Handlingsalternativ',
-    plural: 'Alternativ',
+    label: 'Option',
+    plural: 'Options',
     layer: 'decide',
     fields: [
-      f('title', 'Alternativ'),
-      f('action', 'Vad alternativet innebär', { type: 'long' }),
-      ref('basisIds', 'Kunskapsgrund', ['observation'], true),
-      f('benefits', 'Förväntad nytta', { type: 'long' }),
-      f('costs', 'Kostnader och nackdelar', { type: 'long' }),
-      f('reversibility', 'Möjlighet att ångra eller avbryta'),
+      f('title', 'Option'),
+      f('action', 'What the option involves', { type: 'long' }),
+      ref('basisIds', 'Decision basis', ['observation'], true),
+      f('benefits', 'Expected benefits', { type: 'long' }),
+      f('costs', 'Costs and drawbacks', { type: 'long' }),
+      f('reversibility', 'How the action can be reversed or stopped'),
     ],
   },
   argument: {
     label: 'Argument',
-    plural: 'Argument',
+    plural: 'Arguments',
     layer: 'decide',
     fields: [
-      f('title', 'Rubrik'),
-      ref('optionId', 'Gäller alternativ', ['option']),
-      ref('actorId', 'Framfört av', ['actor']),
-      ref('frameId', 'Perspektiv', ['frame'], false, false),
-      f('position', 'Ställning', {
+      f('title', 'Title'),
+      ref('optionId', 'Applies to option', ['option']),
+      ref('actorId', 'Put forward by', ['actor']),
+      ref('frameId', 'Perspective', ['frame'], false, false),
+      f('position', 'Position', {
         type: 'select',
         options: ['för', 'emot', 'villkor'],
       }),
-      f('reason', 'Argument och konsekvenser', { type: 'long' }),
+      f('reason', 'Argument and consequences', { type: 'long' }),
       ref(
         'referenceIds',
-        'Hänvisningar',
+        'References',
         ['observation', 'source', 'assessment'],
         true,
         false,
@@ -224,119 +224,122 @@ export const kinds: Record<string, Kind> = {
     ],
   },
   decision: {
-    label: 'Beslut',
-    plural: 'Beslut',
+    label: 'Decision',
+    plural: 'Decisions',
     layer: 'decide',
     fields: [
-      f('title', 'Beslutets rubrik'),
-      ref('optionId', 'Valt alternativ', ['option']),
-      ref('ownerId', 'Ansvarig', ['actor']),
-      f('authority', 'Mandat att fatta beslutet', { type: 'long' }),
-      f('rationale', 'Motivering och accepterad osäkerhet', { type: 'long' }),
-      f('dissent', 'Kvarstående invändningar', { type: 'long' }),
-      f('reviewAt', 'Senast uppföljning', { type: 'date' }),
-      f('metric', 'Indikator för uppföljning'),
-      f('operator', 'Målvillkor', {
+      f('title', 'Decision title'),
+      ref('optionId', 'Chosen option', ['option']),
+      ref('ownerId', 'Responsible participant', ['actor']),
+      f('authority', 'Authority to make the decision', { type: 'long' }),
+      f('rationale', 'Rationale and accepted uncertainty', { type: 'long' }),
+      f('dissent', 'Remaining objections', { type: 'long' }),
+      f('reviewAt', 'Follow-up deadline', { type: 'date' }),
+      f('metric', 'Follow-up indicator'),
+      f('operator', 'Target condition', {
         type: 'select',
         options: ['minst', 'högst', 'exakt'],
       }),
-      f('target', 'Målvärde', { type: 'number' }),
-      f('unit', 'Enhet'),
-      f('stopCondition', 'Stoppvillkor', { type: 'long' }),
-      ref('policyId', 'Arbetsregel', ['policy']),
+      f('target', 'Target value', { type: 'number' }),
+      f('unit', 'Unit'),
+      f('stopCondition', 'Stop condition', { type: 'long' }),
+      ref('policyId', 'Working rule', ['policy']),
     ],
   },
   task: {
-    label: 'Åtgärd',
-    plural: 'Åtgärder',
+    label: 'Action',
+    plural: 'Actions',
     layer: 'decide',
     fields: [
-      f('title', 'Åtgärd'),
-      ref('decisionId', 'Tillhör beslut', ['decision']),
-      ref('ownerId', 'Ansvarig', ['actor']),
-      f('dueAt', 'Sista datum', { type: 'date' }),
+      f('title', 'Action'),
+      ref('decisionId', 'Belongs to decision', ['decision']),
+      ref('ownerId', 'Responsible participant', ['actor']),
+      f('dueAt', 'Due date', { type: 'date' }),
       f('status', 'Status', {
         type: 'select',
         options: ['planerad', 'pågår', 'klar', 'avbruten'],
       }),
-      f('note', 'Genomförande och belägg', { type: 'long' }),
+      f('note', 'Implementation and evidence', { type: 'long' }),
     ],
   },
   outcome: {
-    label: 'Utfall',
-    plural: 'Utfall',
+    label: 'Outcome',
+    plural: 'Outcomes',
     layer: 'outcomes',
     fields: [
-      f('title', 'Uppföljning'),
-      ref('decisionId', 'Följer upp beslut', ['decision']),
-      f('measuredAt', 'Mättidpunkt', { type: 'date' }),
-      f('value', 'Observerat värde', { type: 'number' }),
-      f('unit', 'Enhet'),
-      f('method', 'Mätmetod'),
-      ref('sourceIds', 'Underlag för utfallet', ['source'], true),
-      f('observation', 'Vad som hände', { type: 'long' }),
-      f('limitations', 'Begränsningar och andra möjliga orsaker', {
+      f('title', 'Follow-up'),
+      ref('decisionId', 'Follows up decision', ['decision']),
+      f('measuredAt', 'Measurement time', { type: 'date' }),
+      f('value', 'Observed value', { type: 'number' }),
+      f('unit', 'Unit'),
+      f('method', 'Measurement method'),
+      ref('sourceIds', 'Outcome evidence', ['source'], true),
+      f('observation', 'What happened', { type: 'long' }),
+      f('limitations', 'Limitations and other possible causes', {
         type: 'long',
       }),
-      f('nextAction', 'Nästa steg', { type: 'long' }),
+      f('nextAction', 'Next step', { type: 'long' }),
     ],
   },
   policy: {
-    label: 'Arbetsregel',
-    plural: 'Arbetsregler',
+    label: 'Working rule',
+    plural: 'Working rules',
     layer: 'coordinate',
     global: true,
     fields: [
-      f('title', 'Regelns namn'),
-      f('rule', 'Arbetsregel', { type: 'long' }),
+      f('title', 'Rule name'),
+      f('rule', 'Working rule', { type: 'long' }),
       f(
         'minReviews',
-        'Minsta antal separata konton som granskat beslutsgrunden',
+        'Minimum distinct accounts reviewing the decision basis',
         { type: 'number' },
       ),
-      f('requiredGroups', 'Grupper som ska finnas representerade', {
+      f('requiredGroups', 'Groups that must be represented', {
         type: 'list',
         required: false,
       }),
-      f('reviewDays', 'Normal uppföljning inom dagar', { type: 'number' }),
+      f('reviewDays', 'Follow-up deadline (days)', { type: 'number' }),
     ],
   },
   rule_change: {
-    label: 'Ändringsförslag',
-    plural: 'Regelförslag',
+    label: 'Rule proposal',
+    plural: 'Rule proposals',
     layer: 'coordinate',
     global: true,
     fields: [
-      f('title', 'Förslagets namn'),
-      ref('policyId', 'Nuvarande arbetsregel', ['policy']),
-      f('problem', 'Problem i arbetssättet', { type: 'long' }),
-      f('proposal', 'Föreslagen arbetsregel', { type: 'long' }),
-      f('minReviews', 'Föreslaget minsta antal granskarkonton', {
+      f('title', 'Proposal title'),
+      ref('policyId', 'Current working rule', ['policy']),
+      f('problem', 'Problem with the working process', { type: 'long' }),
+      f('proposal', 'Proposed working rule', { type: 'long' }),
+      f('minReviews', 'Proposed minimum reviewer accounts', {
         type: 'number',
       }),
-      f('requiredGroups', 'Grupper som ska finnas representerade', {
+      f('requiredGroups', 'Groups that must be represented', {
         type: 'list',
         required: false,
       }),
-      f('reviewDays', 'Föreslagen uppföljning inom dagar', { type: 'number' }),
+      f('reviewDays', 'Proposed follow-up deadline (days)', { type: 'number' }),
       ref(
         'basisIds',
-        'Berörda poster',
+        'Relevant records',
         ['decision', 'assessment', 'outcome', 'case'],
         true,
       ),
     ],
   },
   rule_resolution: {
-    label: 'Regelbeslut',
-    plural: 'Regelbeslut',
+    label: 'Rule decision',
+    plural: 'Rule decisions',
     layer: 'coordinate',
     global: true,
     fields: [
-      f('title', 'Beslutets rubrik'),
-      ref('changeId', 'Ändringsförslag', ['rule_change']),
-      f('verdict', 'Beslut', { type: 'select', options: ['antas', 'avslås'] }),
-      f('rationale', 'Motivering', { type: 'long' }),
+      f('title', 'Decision title'),
+      ref('changeId', 'Rule proposal', ['rule_change']),
+      f('verdict', 'Decision', {
+        type: 'select',
+        options: ['antas', 'avslås'],
+      }),
+      f('rationale', 'Rationale', { type: 'long' }),
     ],
   },
 };
@@ -376,7 +379,7 @@ export function canonical(value: unknown): string {
   if (value === null || typeof value === 'boolean')
     return JSON.stringify(value);
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new Problem('Ogiltigt tal.');
+    if (!Number.isFinite(value)) throw new Problem('Invalid number.');
     return JSON.stringify(value);
   }
   if (typeof value === 'string') {
@@ -385,7 +388,7 @@ export function canonical(value: unknown): string {
         value,
       )
     )
-      throw new Problem('Ogiltig Unicode.');
+      throw new Problem('Invalid Unicode.');
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -403,7 +406,7 @@ export function canonical(value: unknown): string {
         .join(',') +
       '}'
     );
-  throw new Problem('Ogiltig JSON.');
+  throw new Problem('Invalid JSON.');
 }
 export async function digest(text: string) {
   return Array.from(
@@ -440,9 +443,9 @@ export function validate(
       (k) => !['kind', 'caseId', 'supersedes', 'data'].includes(k),
     )
   )
-    throw new Problem('Ogiltig post.');
+    throw new Problem('Invalid record.');
   if (typeof p.kind !== 'string' || !Object.hasOwn(kinds, p.kind))
-    throw new Problem('Okänd posttyp.');
+    throw new Problem('Unknown record type.');
   const schema = kinds[p.kind];
   if (
     (p.caseId !== undefined &&
@@ -452,40 +455,43 @@ export function validate(
       p.supersedes !== null &&
       typeof p.supersedes !== 'string')
   )
-    throw new Problem('Ogiltig hänvisning.');
+    throw new Problem('Invalid reference.');
   if (p.kind === 'case' && p.supersedes)
     throw new Problem(
-      'Ärenden har beständiga ID:n. Skapa ett nytt ärende om avgränsningen behöver ändras.',
+      'Case IDs are permanent. Create a new case if its scope needs to change.',
     );
   if (!p.data || typeof p.data !== 'object' || Array.isArray(p.data))
-    throw new Problem('Postens innehåll saknas.');
+    throw new Problem('Record content is missing.');
   if (Object.keys(p.data).some((k) => !schema.fields.some((f) => f.key === k)))
-    throw new Problem('Posten innehåller ett okänt fält.');
+    throw new Problem('The record contains an unknown field.');
   if (
     !restoring &&
     ['policy', 'rule_resolution'].includes(p.kind) &&
     role !== 'owner'
   )
-    throw new Problem('Endast arbetsytans ägare får ändra arbetsregler.', 403);
+    throw new Problem(
+      'Only the workspace owner can change working rules.',
+      403,
+    );
   const byId = new Map(prior.map((e) => [e.id, e]));
   if (!schema.global && (!p.caseId || byId.get(p.caseId)?.kind !== 'case'))
-    throw new Problem('Välj ett befintligt ärende.');
+    throw new Problem('Select an existing case.');
   if (schema.global && p.caseId)
-    throw new Problem('Den här posten hör till arbetsytan.');
+    throw new Problem('This record belongs to the workspace as a whole.');
   for (const field of schema.fields) {
     const v = p.data[field.key];
     const empty =
       v === undefined || v === '' || (Array.isArray(v) && !v.length);
     if (empty) {
-      if (field.required) throw new Problem(`${field.label} behöver fyllas i.`);
+      if (field.required) throw new Problem(`${field.label} is required.`);
       continue;
     }
     if (field.type === 'number') {
       if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) > 1e15)
-        throw new Problem(`${field.label}: ange ett giltigt tal.`);
+        throw new Problem(`${field.label}: enter a valid number.`);
     } else if (field.type === 'boolean') {
       if (typeof v !== 'boolean')
-        throw new Problem(`${field.label}: ogiltigt värde.`);
+        throw new Problem(`${field.label}: invalid value.`);
     } else if (field.type === 'list' || field.type === 'refs') {
       if (
         !Array.isArray(v) ||
@@ -493,11 +499,13 @@ export function validate(
         v.some((s) => typeof s !== 'string' || !s.trim() || s.length > 1000) ||
         new Set(v).size !== v.length
       )
-        throw new Problem(`${field.label}: ange högst 50 olika värden.`);
+        throw new Problem(
+          `${field.label}: enter no more than 50 distinct values.`,
+        );
     } else if (typeof v !== 'string' || !v.trim() || v.length > 8000)
-      throw new Problem(`${field.label}: ogiltig eller för lång text.`);
+      throw new Problem(`${field.label}: invalid or excessively long text.`);
     if (field.type === 'select' && !field.options?.includes(v as string))
-      throw new Problem(`${field.label}: välj ett alternativ.`);
+      throw new Problem(`${field.label}: select an option.`);
     if (
       field.type === 'date' &&
       (typeof v !== 'string' ||
@@ -505,17 +513,17 @@ export function validate(
         !Number.isFinite(Date.parse(v)) ||
         new Date(v).toISOString() !== v)
     )
-      throw new Problem(`${field.label}: ogiltigt datum.`);
+      throw new Problem(`${field.label}: invalid date.`);
     if (field.type === 'ref' || field.type === 'refs')
       for (const id of Array.isArray(v) ? v : [v]) {
         const target = byId.get(String(id));
         if (!target || !field.targets?.includes(target.kind))
           throw new Problem(
-            `${field.label}: hänvisningen saknas eller har fel typ.`,
+            `${field.label}: the reference is missing or has the wrong type.`,
           );
         if (target.caseId && p.caseId && target.caseId !== p.caseId)
           throw new Problem(
-            `${field.label}: hänvisningen hör till ett annat ärende.`,
+            `${field.label}: the reference belongs to another case.`,
           );
       }
   }
@@ -528,7 +536,7 @@ export function validate(
       old.caseId !== (p.caseId || null) ||
       prior.some((e) => e.supersedes === old.id)
     )
-      throw new Problem('Revidera den senaste versionen av samma post.', 409);
+      throw new Problem('Revise the latest version of the same record.', 409);
   }
   if (p.kind === 'source') {
     try {
@@ -543,44 +551,49 @@ export function validate(
         throw Error();
     } catch {
       throw new Problem(
-        'Källadressen måste vara https, http eller urn utan inloggningsuppgifter.',
+        'The source reference must use https, http or urn without login credentials.',
       );
     }
     if (Boolean(p.data.artifactId) !== Boolean(p.data.artifactDigest))
-      throw new Problem('Bilagans ID och hash måste anges tillsammans.');
+      throw new Problem('Provide the attachment ID and hash together.');
   }
   if (p.kind === 'mapping' && p.data.fromId === p.data.toId)
-    throw new Problem('Välj två olika begrepp.');
+    throw new Problem('Select two different concepts.');
   if (p.kind === 'policy' || p.kind === 'rule_change') {
     if (
       !Number.isInteger(p.data.minReviews) ||
       Number(p.data.minReviews) < 1 ||
       Number(p.data.minReviews) > 20
     )
-      throw new Problem('Antalet granskarkonton måste vara 1–20.');
+      throw new Problem(
+        'The number of reviewer accounts must be between 1 and 20.',
+      );
     if (
       !Number.isInteger(p.data.reviewDays) ||
       Number(p.data.reviewDays) < 1 ||
       Number(p.data.reviewDays) > 3650
     )
-      throw new Problem('Uppföljningstiden måste vara 1–3650 dagar.');
+      throw new Problem('The follow-up period must be between 1 and 3,650 days.');
   }
   if (p.kind === 'outcome') {
     const d = byId.get(str(p.data, 'decisionId'))!;
     if (p.data.unit !== d.data.unit)
-      throw new Problem('Utfallet måste använda samma enhet som beslutet.');
+      throw new Problem('The outcome must use the same unit as the decision.');
     if (Date.parse(str(p.data, 'measuredAt')) < Date.parse(d.createdAt))
-      throw new Problem('Mätningen kan inte föregå beslutet.');
+      throw new Problem('The measurement cannot precede the decision.');
   }
   if (p.kind === 'decision' && !restoring) {
     if (Date.parse(str(p.data, 'reviewAt')) <= Date.now())
-      throw new Problem('Välj ett kommande uppföljningsdatum.');
+      throw new Problem('Choose a future follow-up deadline.');
     const policy = byId.get(str(p.data, 'policyId'))!;
     const latest = active(prior)
       .filter((e) => e.kind === 'policy')
       .at(-1);
     if (latest?.id !== policy.id)
-      throw new Problem('Använd arbetsytans gällande regelversion.', 409);
+      throw new Problem(
+        'Use the current working rule for this workspace.',
+        409,
+      );
     const option = byId.get(str(p.data, 'optionId'))!;
     const basis = option.data.basisIds as string[];
     if (
@@ -588,7 +601,7 @@ export function validate(
       Date.now() + Number(policy.data.reviewDays) * 86400000
     )
       throw new Problem(
-        `Arbetsregeln kräver uppföljning inom ${String(policy.data.reviewDays)} dagar.`,
+        `The working rule requires follow-up within ${String(policy.data.reviewDays)} days.`,
       );
     for (const id of basis) {
       const reviewers = new Set(
@@ -603,7 +616,7 @@ export function validate(
       );
       if (reviewers.size < Number(policy.data.minReviews))
         throw new Problem(
-          `Kunskapsgrunden behöver ${String(policy.data.minReviews)} separat registrerande lokalt granskarkonto per observation innan beslut.`,
+          `Before a decision, each observation in the decision basis needs reviews submitted by at least ${String(policy.data.minReviews)} distinct local accounts.`,
         );
     }
     const represented = new Set(
@@ -618,7 +631,7 @@ export function validate(
       (g) => !represented.has(g),
     );
     if (missing.length)
-      throw new Problem('Argument saknas från: ' + missing.join(', '));
+      throw new Problem('Arguments are missing from: ' + missing.join(', '));
   }
   if (p.kind === 'rule_resolution') {
     if (
@@ -627,7 +640,7 @@ export function validate(
           e.kind === 'rule_resolution' && e.data.changeId === p.data.changeId,
       )
     )
-      throw new Problem('Förslaget har redan behandlats.', 409);
+      throw new Problem('This proposal has already been resolved.', 409);
   }
 }
 export async function makeEntry(
@@ -655,7 +668,7 @@ export async function makeEntry(
 }
 export async function verifyEntries(entries: Entry[], head: string) {
   if (!Array.isArray(entries) || entries.length > 2000)
-    throw new Problem('Högst 2 000 poster kan ingå i en överföring.');
+    throw new Problem('A transfer can contain at most 2,000 records.');
   const seen: Entry[] = [];
   const ids = new Set<string>();
   for (const e of entries) {
@@ -689,9 +702,7 @@ export async function verifyEntries(entries: Entry[], head: string) {
       e.seq !== seen.length + 1 ||
       e.prevHash !== (seen.at(-1)?.hash || ZERO)
     )
-      throw new Problem(
-        'Överföringen innehåller en bruten eller ogiltig historik.',
-      );
+      throw new Problem('The transfer contains a broken or invalid history.');
     if (
       typeof e.createdAt !== 'string' ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(e.createdAt) ||
@@ -701,7 +712,7 @@ export async function verifyEntries(entries: Entry[], head: string) {
       (e.caseId !== null && typeof e.caseId !== 'string') ||
       (e.supersedes !== null && typeof e.supersedes !== 'string')
     )
-      throw new Problem('Ogiltig postmetadata.');
+      throw new Problem('Invalid record metadata.');
     validate(
       {
         kind: e.kind,
@@ -715,12 +726,12 @@ export async function verifyEntries(entries: Entry[], head: string) {
     );
     const { hash, ...body } = e;
     if ((await digest(canonical(body))) !== hash)
-      throw new Problem('En posts innehåll stämmer inte med dess hash.');
+      throw new Problem('The content of a record does not match its hash.');
     ids.add(e.id);
     seen.push(e);
   }
   if ((seen.at(-1)?.hash || ZERO) !== head)
-    throw new Problem('Historikens slutvärde stämmer inte.');
+    throw new Problem('The history head does not match.');
 }
 export type Finding = {
   title: string;
@@ -743,7 +754,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
       )
         out.push({
           type: 'unreviewed',
-          title: 'Observation saknar granskning',
+          title: 'Observation has not been reviewed',
           detail: String(e.data.title),
           ids: [e.id],
           severity: 'warning',
@@ -751,7 +762,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
       if ((e.data.contradicts as string[] | undefined)?.length)
         out.push({
           type: 'contradiction',
-          title: 'Motsägelse behöver hanteras',
+          title: 'Contradiction needs review',
           detail: String(e.data.title),
           ids: [e.id, ...(e.data.contradicts as string[])],
           severity: 'warning',
@@ -762,8 +773,8 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
         type: 'dispute',
         title:
           e.data.verdict === 'invänder'
-            ? 'Invändning kvarstår'
-            : 'Bedömningen är osäker',
+            ? 'Objection remains'
+            : 'Assessment is uncertain',
         detail: String(e.data.title),
         ids: [e.id, String(e.data.targetId)],
         severity: 'warning',
@@ -775,7 +786,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
       if (Date.parse(String(e.data.reviewAt)) < clock && !outcomes.length)
         out.push({
           type: 'overdue',
-          title: 'Uppföljning saknas',
+          title: 'Follow-up is missing',
           detail: String(e.data.title),
           ids: [e.id],
           severity: 'warning',
@@ -788,7 +799,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
     )
       out.push({
         type: 'task',
-        title: 'Försenad åtgärd',
+        title: 'Overdue action',
         detail: String(e.data.title),
         ids: [e.id],
         severity: 'warning',
@@ -798,7 +809,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
       if (d && !meetsTarget(e, d))
         out.push({
           type: 'target',
-          title: 'Målet är inte uppnått',
+          title: 'Target has not been met',
           detail: String(e.data.title),
           ids: [e.id, d.id],
           severity: 'warning',
@@ -810,7 +821,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
     if (stale.length)
       out.push({
         type: 'revision',
-        title: 'Underlaget har reviderats',
+        title: 'Referenced evidence has been revised',
         detail: String(e.data.title),
         ids: [e.id, ...stale],
         severity: 'warning',
@@ -830,7 +841,7 @@ export function diagnose(entries: Entry[], clock = Date.now()): Finding[] {
       if (missing.length)
         out.push({
           type: 'representation',
-          title: 'Grupper saknas i överläggningen',
+          title: 'Groups are missing from the deliberation',
           detail: missing.join(', '),
           ids: [e.id],
           severity: 'info',

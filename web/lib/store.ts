@@ -32,23 +32,26 @@ export async function getSpace(id: string, person: Person): Promise<Space> {
     .bind(id, person.id)
     .first<Space>();
   if (!s)
-    throw new Problem('Arbetsytan finns inte eller du saknar åtkomst.', 404);
+    throw new Problem(
+      'The workspace does not exist or you do not have access.',
+      404,
+    );
   return s;
 }
 export function writable(s: Space, kind?: string) {
   if (s.read_only)
     throw new Problem(
-      'Importerade grenar är skrivskyddade. Skapa en lokal fortsättning först.',
+      'Imported branches are read-only. Create a local continuation first.',
       403,
     );
-  if (s.role === 'viewer') throw new Problem('Du har läsbehörighet.', 403);
+  if (s.role === 'viewer') throw new Problem('You have read-only access.', 403);
   if (
     s.role === 'reviewer' &&
     kind &&
     !['assessment', 'argument', 'outcome'].includes(kind)
   )
     throw new Problem(
-      'Granskarrollen får lämna bedömningar, argument och utfall.',
+      'Reviewers can add assessments, arguments and outcomes.',
       403,
     );
 }
@@ -89,15 +92,15 @@ export async function createSpace(
     !purpose?.trim() ||
     purpose.length > 3000
   )
-    throw new Problem('Ange arbetsytans namn och syfte.');
+    throw new Problem('Enter the workspace name and purpose.');
   const id = crypto.randomUUID(),
     createdAt = new Date().toISOString();
   const policy = await makeEntry(
     {
       kind: 'policy',
       data: {
-        title: 'Arbetsregel 1',
-        rule: 'Underlag ska granskas, invändningar redovisas och beslut följas upp. Registrerande konton räknas separat från angivna deltagare.',
+        title: 'Working rule 1',
+        rule: 'Review evidence, record objections and follow up decisions. Accounts submitting records are counted separately from named participants.',
         minReviews: 1,
         requiredGroups: [],
         reviewDays: 30,
@@ -183,23 +186,25 @@ export async function append(
 ) {
   writable(s, proposal.kind);
   if (proposal.kind === 'policy')
-    throw new Problem('Ändra arbetsregler genom förslag och regelbeslut.');
+    throw new Problem(
+      'Change working rules through proposals and rule decisions.',
+    );
   if (s.head !== expectedHead)
     throw new Problem(
-      'Någon har ändrat arbetsytan. Läs in den senaste versionen.',
+      'Someone has changed the workspace. Reload the latest version.',
       409,
     );
   const previous = await records(s);
   if (s.head !== expectedHead)
-    throw new Problem('Arbetsytan ändrades. Läs in senaste versionen.', 409);
+    throw new Problem('The workspace changed. Reload the latest version.', 409);
   if (previous.length >= 1900)
     throw new Problem(
-      'Arbetsytan har nått gränsen 1 900 poster. Exportera och påbörja en ny arbetsyta.',
+      'The workspace has reached its limit of 1,900 records. Export it and start a new workspace.',
     );
   if (proposal.supersedes) {
     const old = previous.find((e) => e.id === proposal.supersedes);
     if (old && old.actor !== person.id && s.role !== 'owner')
-      throw new Problem('Du kan bara revidera egna poster.', 403);
+      throw new Problem('You can only revise your own records.', 403);
   }
   if (proposal.kind === 'source' && proposal.data?.artifactId) {
     const a = await db()
@@ -207,7 +212,7 @@ export async function append(
       .bind(proposal.data.artifactId, s.id)
       .first<{ digest: string }>();
     if (!a || a.digest !== proposal.data.artifactDigest)
-      throw new Problem('Bilagan finns inte i den här arbetsytan.');
+      throw new Problem('The attachment does not exist in this workspace.');
   }
   const entry = await makeEntry(
     proposal,
@@ -228,7 +233,7 @@ export async function append(
       .at(-1)!;
     if (change.data.policyId !== old.id)
       throw new Problem(
-        'Förslaget gäller en äldre arbetsregel. Revidera förslaget först.',
+        'The proposal refers to an older working rule. Revise the proposal first.',
         409,
       );
     added.push(
@@ -255,10 +260,10 @@ export async function append(
     1_500_000
   )
     throw new Problem(
-      'Historiken får vara högst 1,5 MB för att säkert kunna exporteras och återläsas.',
+      'The history must not exceed 1.5 MB so it can be exported and restored reliably.',
     );
   if (previous.length + added.length > 1900)
-    throw new Problem('Arbetsytan får innehålla högst 1 900 poster.');
+    throw new Problem('The workspace can contain at most 1,900 records.');
   const result = await db().batch([
     ...added.map((e) => insertEntry(s.id, e, expectedHead, person.id, s.role)),
     db()
@@ -276,7 +281,7 @@ export async function append(
   ]);
   if (result.at(-1)?.meta.changes !== 1)
     throw new Problem(
-      'Arbetsytan ändrades medan du skrev. Läs in senaste versionen.',
+      'The workspace changed while you were writing. Reload the latest version.',
       409,
     );
   return added;
@@ -294,7 +299,7 @@ export async function importSpace(
     now = new Date().toISOString();
   await verifyEntries(sourceEntries, sourceHead);
   if (new TextEncoder().encode(canonical(sourceEntries)).length > 1_500_000)
-    throw new Problem('Historiken får vara högst 1,5 MB.');
+    throw new Problem('The history must not exceed 1.5 MB.');
   const commands = [
     db()
       .prepare(
@@ -303,7 +308,7 @@ export async function importSpace(
       .bind(
         id,
         title.slice(0, 150),
-        'Signerad importerad gren. Innehållet bevaras för granskning.',
+        'Signed imported branch. Its content is preserved for review.',
         person.id,
         sourceHead,
         sourceEntries.length,
@@ -329,17 +334,17 @@ export async function importSpace(
 export async function forkSpace(s: Space, person: Person) {
   if (!s.read_only)
     throw new Problem(
-      'Lokal fortsättning skapas från en importerad signerad gren.',
+      'Create a local continuation from a signed imported branch.',
     );
   const receipt = await db()
     .prepare('SELECT fingerprint,envelope FROM imports WHERE space_id=?')
     .bind(s.id)
     .first<{ fingerprint: string; envelope: string }>();
-  if (!receipt) throw new Problem('Importkvittot saknas.');
+  if (!receipt) throw new Problem('The import receipt is missing.');
   const prior = await records(s);
   if (prior.length >= 1900)
     throw new Problem(
-      'Grenen är för stor för lokal fortsättning (max 1 899 poster).',
+      'The branch is too large for a local continuation (maximum 1,899 records).',
     );
   const id = crypto.randomUUID(),
     now = new Date().toISOString();
@@ -351,8 +356,8 @@ export async function forkSpace(s: Space, person: Person) {
       kind: 'policy',
       supersedes: old?.id || null,
       data: {
-        title: 'Lokal arbetsregel',
-        rule: 'Denna lokala gren granskar importerade uppgifter på nytt. Importerade roller eller tillitsanspråk ger ingen lokal behörighet.',
+        title: 'Local working rule',
+        rule: 'This local branch reviews imported information again. Imported roles or trust claims do not grant local permissions.',
         minReviews: 1,
         requiredGroups: [],
         reviewDays: 30,
@@ -366,7 +371,7 @@ export async function forkSpace(s: Space, person: Person) {
   if (
     new TextEncoder().encode(canonical([...prior, policy])).length > 1_500_000
   )
-    throw new Problem('Grenen saknar plats för en lokal fortsättning.');
+    throw new Problem('The branch has no room for a local continuation.');
   await db().batch([
     db()
       .prepare(
@@ -374,7 +379,7 @@ export async function forkSpace(s: Space, person: Person) {
       )
       .bind(
         id,
-        (s.title + ' · lokal gren').slice(0, 150),
+        (s.title + ' · local branch').slice(0, 150),
         s.purpose,
         person.id,
         policy.hash,

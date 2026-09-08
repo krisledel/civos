@@ -6,8 +6,15 @@ import {
   verifyEntries,
   digest,
   type Entry,
+  kinds,
 } from '../lib/model';
 import { verifyBundle, signBundle } from '../lib/bundles';
+import {
+  fieldDisplay,
+  optionLabel,
+  recordSearch,
+  recordStatus,
+} from '../lib/presentation';
 const base = process.env.CIVOS_TEST_URL || 'http://localhost:3000';
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))
   throw Error('Integration tests require a local server.');
@@ -39,6 +46,11 @@ async function state(space: string) {
 }
 const unauth = await fetch(base + '/api/civos');
 ok(unauth.status === 401, 'Unauthenticated reads must fail');
+ok(
+  ((await unauth.json()) as { error: string }).error ===
+    'Sign in to open the workspace.',
+  'Authentication errors are English',
+);
 const csrf = await fetch(base + '/api/civos', {
   method: 'POST',
   headers: { ...headers, Origin: 'https://foreign.test' },
@@ -509,6 +521,43 @@ for (const alg of ['EdDSA', 'Ed25519']) {
   );
   checks++;
 }
+const storedBeforeDisplay = canonical(s.entries);
+for (const entry of s.entries as Entry[]) {
+  for (const field of kinds[entry.kind].fields)
+    fieldDisplay(entry.kind, field.key, entry.data[field.key]);
+  recordStatus(entry);
+  recordSearch(entry);
+}
+ok(
+  canonical(s.entries) === storedBeforeDisplay,
+  'English presentation must not mutate signed record data',
+);
+ok(
+  fieldDisplay('task', 'status', 'pågår') === 'In progress',
+  'Historical status uses its English display label',
+);
+ok(
+  fieldDisplay('source', 'title', 'pågår') === 'pågår',
+  'User text that matches a protocol value must remain untouched',
+);
+ok(
+  recordSearch({
+    ...assessment,
+    data: { ...assessment.data, verdict: 'invänder' },
+  }).includes('objects'),
+  'English status labels are searchable',
+);
+ok(
+  Object.values(kinds).every((kind) =>
+    kind.fields.every(
+      (field) =>
+        field.type !== 'select' ||
+        field.options!.every((value) => optionLabel(field, value) !== value),
+    ),
+  ),
+  'Every stored enum has an English display label',
+);
+await verifyEntries(s.entries, s.space.head);
 const originalAgain = await fetch(
   base + '/api/civos?space=' + imported.id + '&export=1',
   { headers },

@@ -1,14 +1,14 @@
-# CivOS: installera och pröva hela arbetsflödet
+# CivOS: install and test the complete workflow
 
 **Kris Ledel · September 2026**
 
-Webbversionen av CivOS håller ihop underlag, perspektiv, granskning, överläggning, beslut, genomförande, utfall och ändringar av arbetsregler. Du arbetar i formulär i webbläsaren. Uppgifterna sparas på servern och kan granskas från andra konton med tilldelad åtkomst.
+The web version of CivOS connects evidence, perspectives, review, deliberation, decisions, implementation, outcomes, and changes to working rules. You use forms in the browser. Records are saved on the server and can be reviewed from other accounts with assigned access.
 
-Den här guiden gäller webbversionen i katalogen `web/`. Python-programmet i `civos/` är den tidigare prototypen 0.2. Dess kommandon skapar en lokal beslutslogg och en HTML-rapport. De startar inte webbversionen, och dess JSON-export kan inte importeras direkt här.
+This guide covers the web version in the `web/` directory. The Python program in `civos/` is the earlier 0.2 prototype. Its commands create a local decision ledger and an HTML report. They do not launch the web version, and its JSON exports cannot be imported directly here.
 
-## 1. Installera beroenden, nyckel och databas
+## 1. Install dependencies, the key, and the database
 
-Du behöver Node.js 22.13 eller senare. Hämta den version av [repot](https://github.com/krisledel/civos) som innehåller `web/`, eller packa upp leveranspaketet. Öppna en terminal i repots rot och kör:
+You need Node.js 22.13 or later. Get the version of the [repository](https://github.com/krisledel/civos) that contains `web/`, or unpack the delivery package. Open a terminal in the repository root and run:
 
 ```sh
 node --version
@@ -19,130 +19,129 @@ npm run db:migrate
 npm run dev
 ```
 
-`npm ci` installerar versionerna i låsfilen. `setup:key` skapar en privat Ed25519-nyckel i JWK-format som värde för `CIVOS_SIGNING_KEY` i `web/.dev.vars`. Nyckeln används av servern när den signerar exportpaket. Den privata nyckeln ska stanna där; exporten innehåller den publika nyckeln.
+`npm ci` installs the versions in the lockfile. `setup:key` creates a private Ed25519 key in JWK format as the value of `CIVOS_SIGNING_KEY` in `web/.dev.vars`. The server uses the key to sign export bundles. The private key must stay there; the export contains the public key.
 
-`.dev.vars` är en lokal, ignorerad fil. Lägg den inte i versionshantering, klientkod eller ett delat paket. Behåll samma nyckel när du vill att en lokal installation ska ha samma fingeravtryck över tid. Ett avsiktligt nyckelbyte ger ett nytt fingeravtryck som mottagare behöver kontrollera.
+`.dev.vars` is a local, ignored file. Do not put it in version control, client code, or a shared package. Keep the same key if you want a local installation to retain its fingerprint over time. An intentional key change creates a new fingerprint that recipients need to check.
 
-`db:migrate` kör migrationerna mot den lokala D1-databasen genom `wrangler.local.json` och bindningen `DB`. Kommandot använder lokal drift. Bilagor lagras genom bindningen `ATTACHMENTS`. Lokal databas och objektlagring är utvecklingsmiljöns data, inte en kopia av en publicerad installation.
+`db:migrate` runs the migrations against the local D1 database through `wrangler.local.json` and the `DB` binding. The command uses local mode. Attachments are stored through the `ATTACHMENTS` binding. The local database and object storage contain development data, not a copy of a hosted installation.
 
-Öppna adressen som `dev` skriver ut och använd sidans inloggning. Utvecklingsmiljön ger en lokal testidentitet. En privat publicering använder värdplattformens inloggning. Exponera inte utvecklingsservern som en publik tjänst; den lokala testidentiteten är inte en produktionsinloggning.
+Open the address printed by `dev` and use the page's sign-in flow. The development environment provides a local test identity. A private deployment uses the hosting platform's authentication. Do not expose the development server as a public service; the local test identity is not a production sign-in.
 
-Kontrollera även typningen och produktionsbygget från `web/`:
+Also check types and the production build from `web/`:
 
 ```sh
 npm run typecheck
 npm run build
 ```
 
-En installation utan `CIVOS_SIGNING_KEY` kan inte skapa signerade exporter. Ett fel om saknade tabeller betyder att den lokala databasen behöver rätt migrationer. Spara felmeddelandet och åtgärda grundfelet innan du fortsätter provkörningen.
+An installation without `CIVOS_SIGNING_KEY` cannot create signed exports. An error about missing tables means that the local database needs the correct migrations. Save the error message and resolve the underlying problem before continuing the trial.
 
-## 2. Skapa arbetsytan och förstå åtkomsten
+## 2. Create the workspace and understand access
 
-Skapa en arbetsyta med ett tydligt syfte, exempelvis ”Pröva en extra öppenkväll i föreningsverkstaden”. Kontot som skapar arbetsytan blir ägare. En första arbetsregel skapas med krav på ett granskarkonto, inga obligatoriska grupper och 30 dagar som högsta uppföljningstid.
+Create a workspace with a clear purpose, such as “Test an extra evening opening at the community workshop.” The account that creates the workspace becomes its owner. An initial working rule is created with a requirement for one reviewer account, no required groups, and a maximum follow-up period of 30 days.
 
-Det finns fyra kontoroller:
+There are four account roles:
 
-| Roll | Vad kontot kan göra |
+| Role | What the account can do |
 | --- | --- |
-| Ägare | Hantera innehåll, regler, inbjudningar, åtkomst och nodtillit. Revidera egna och andras poster med historiken bevarad. |
-| Redaktör | Registrera innehåll och regelförslag samt revidera egna poster. |
-| Granskare | Registrera bedömningar, argument och utfall samt revidera egna sådana poster. |
-| Läsare | Läsa och exportera innehållet utan att ändra den ursprungliga arbetsytan. |
+| Owner | Manage content, rules, invitations, access, and node trust. Revise their own and other contributors' records while preserving history. |
+| Editor | Register content and rule proposals, and revise their own records. |
+| Reviewer | Register assessments, arguments, and outcomes, and revise their own records of these types. |
+| Reader | Read and export content without changing the original workspace. |
 
-Ägaren kan skapa en inbjudningskod till en av de tre andra rollerna. Koden gäller i 24 timmar och kan användas en gång. Ge koden till den avsedda deltagaren genom en kanal ni redan använder.
+The owner can create an invitation code for one of the other three roles. The code is valid for 24 hours and can be used once. Give it to the intended participant through a channel you already use.
 
-En deltagarpost är något annat än ett konto. Den beskriver namn, roll, grupper, kunskapsområden och intressen. Namnet i posten ger ingen behörighet. När en bedömning registreras sparas också vilket inloggat konto som skrev den. Det är de registrerande kontona som räknas i beslutsregelns granskningskrav.
+A participant record is different from an account. It describes a name, role, groups, fields of knowledge, and interests. The name in the record grants no permissions. When an assessment is registered, the system also records which signed-in account entered it. These registering accounts are counted toward the decision rule's review requirement.
 
-## 3. Registrera ett syntetiskt ärende genom alla lager
+## 3. Record a synthetic case across all layers
 
-Använd följande konstruerade fall. Det gör ingen utsaga om en verklig förening:
+Use the following invented case. It makes no claim about a real organisation:
 
-> Fjorton av tjugo svarande medlemmar vill ha öppet på tisdag 18–20. Två volontärer kan bemanna ett provtillfälle. Gruppen överväger att prova en kväll, med målet minst tolv faktiska besökare.
+> Fourteen of twenty responding members want the workshop to open on Tuesday from 18:00 to 20:00. Two volunteers can staff one trial session. The group is considering a single evening trial with a target of at least twelve actual visitors.
 
-Skapa ärendet och ange ”Medlemmar” och ”Volontärer” som berörda grupper. Lägg till en deltagarpost för vardera gruppen. Ange att personerna och uppgifterna är testdata.
+Create the case and list “Members” and “Volunteers” as affected groups. Add a participant record for each group. State that the people and details are test data.
 
-Skapa två perspektiv. Det första beskriver medlemmarnas tillgång till lokalen och använder enkätsvar. Det andra beskriver möjlig bemanning och använder volontärernas schema. Ange för båda vad metoden kan visa och vad den inte fångar.
+Create two perspectives. The first concerns members' access to the premises and uses survey responses. The second concerns available staffing and uses the volunteers' schedule. For each, state what the method can show and what it misses.
 
-Lägg till begreppen ”önskad öppettid” och ”bemanningsbar öppettid” i respektive perspektiv. Skapa en överlappande relation mellan dem, begränsad till försöksveckan. Skriv uttryckligen att önskemål inte är bindande anmälningar och att bemanning inte garanterar besök.
+Add the concepts “desired opening time” and “staffable opening time” to their respective perspectives. Create an overlapping relation between them, limited to the trial week. Explicitly state that preferences are not binding bookings and that staffing does not guarantee attendance.
 
-Skapa sedan två källor: en syntetisk enkät och ett syntetiskt bemanningsschema. Adresserna kan vara `urn:civos:test:verkstad:enkat` och `urn:civos:test:verkstad:bemanning`. Ge dem olika gemensamt ursprung eftersom de beskriver olika testunderlag. Om du lägger till flera kopior av samma enkät ska kopiorna ha samma ursprung.
+Then create two sources: a synthetic survey and a synthetic staffing schedule. Their addresses can be `urn:civos:test:verkstad:enkat` and `urn:civos:test:verkstad:bemanning`. Give them different common-origin identifiers because they describe different test material. If you add several copies of the same survey, those copies should share the same origin.
 
-Registrera observationerna med rätt källa och perspektiv. Ange tid, plats och osäkerhet. En mätuppgift, en tolkning, en prognos och en värdering har olika kategorier. Använd den kategori som motsvarar vad ni faktiskt påstår.
+Register the observations with the correct source and perspective. Record time, place, and uncertainty. A measurement, an interpretation, a forecast, and a value judgment belong to different categories. Use the category that matches what you are actually claiming.
 
-## 4. Låt granskningsregeln prövas
+## 4. Test the review rule
 
-Registrera alternativet ”Genomför ett provtillfälle”. Koppla det till båda observationerna. Ange nyttan med att mäta verklig närvaro, kostnaden om fyra volontärtimmar och att försöket upphör efter den enda kvällen.
+Register the option “Run one trial session.” Link it to both observations. State the benefit of measuring actual attendance, the cost of four volunteer hours, and that the trial ends after that single evening.
 
-Försök registrera ett beslut innan observationerna har granskats. Det ska avvisas. Granska sedan varje observation och ange metod, slutsats, underlag, intressen och reservationer. En granskare kan stödja att enkäten återges korrekt och samtidigt vara osäker på vad den säger om faktisk närvaro.
+Try to register a decision before the observations have been reviewed. It should be rejected. Then assess each observation and record the method, conclusion, evidence, interests, and reservations. A reviewer can support the accuracy of the survey summary while remaining uncertain about what it says about actual attendance.
 
-Om ni prövar en regel med två granskarkonton måste två separata konton registrera en bedömning av varje observation i alternativets kunskapsgrund. Två olika deltagarnamn inmatade från samma konto räcker inte. Två konton bevisar i sin tur inte att granskarna är oberoende personer eller sakkunniga; detta behöver bedömas i arbetsformen.
+If you test a rule requiring two reviewer accounts, two separate accounts must register an assessment of every observation in the option's evidence basis. Two different participant names entered from the same account are not enough. In turn, two accounts do not prove that the reviewers are independent people or experts; your working process must address that.
 
-Lägg in ett argument från medlemmarna för försöket och ett villkor från volontärerna: inget automatiskt återkommande öppethållande. Om arbetsregeln kräver dessa grupper ska beslutet avvisas tills argument från båda har registrerats. Representationskontrollen använder den grupp som den angivna deltagaren uppges företräda. Programmet kontrollerar inte personens mandat från gruppen.
+Add an argument from the members in favour of the trial and a condition from the volunteers: no automatic recurring opening. If the working rule requires these groups, the decision should be rejected until arguments from both have been registered. The representation check uses the group that the named participant is stated to represent. The application does not verify the person's mandate from that group.
 
-En bedömning med ”invänder” eller ”osäkert” försvinner inte när ett beslut registreras. Kravet gäller dokumenterad granskning. Det innebär inte att alla måste ha samma slutsats.
+An assessment marked “Objects” or “Uncertain” does not disappear when a decision is registered. The requirement is for documented review. It does not require everyone to reach the same conclusion.
 
-## 5. Fatta beslutet och registrera utfallet
+## 5. Make the decision and record the outcome
 
-Välj provtillfället som alternativ och ange en ansvarig deltagare. Beskriv vilket mandat som påstås ge arbetsgruppen rätt att ordna försöket. Motivera beslutet med den kvarstående osäkerheten synlig.
+Select the trial session as the option and assign a responsible participant. Describe the mandate claimed to authorise the group to organise the trial. Explain the decision while keeping the remaining uncertainty visible.
 
-Ange ett framtida uppföljningsdatum, exempelvis om sju dagar. Sätt indikatorn till ”Antal unika besökare”, målvillkoret till ”minst”, målvärdet till `12` och enheten till `personer`. Skriv ett stoppvillkor: försöket ställs in om färre än två volontärer kan bemanna det. Välj den aktuella arbetsregeln.
+Set a future follow-up date, for example seven days from now. Set the indicator to “Number of unique visitors,” the target condition to “At least,” the target value to `12`, and the unit to `personer` (people). Add a stopping condition: cancel the trial if fewer than two volunteers can staff it. Select the current working rule.
 
-Skapa en åtgärd med ansvarig, sista datum och status. I ett syntetiskt test kan du därefter registrera ett konstruerat utfall på `8` personer med en egen källa. Mättidpunkten måste ligga efter det registrerade beslutet. Enheten ska vara exakt `personer` även här.
+Create a task with an owner, deadline, and status. In a synthetic test, you can then register an invented outcome of `8` people with its own source. The measurement time must follow the recorded decision. Use exactly `personer` as the unit here as well.
 
-Kontrollera att översikten visar att målet inte är uppnått. Revidera åtgärdens status till klar och ange var uppföljningen finns. Att åtgärden är genomförd gör inte målet uppnått. Att utfallet ligger under målet bevisar inte varför det gjorde det.
+Check that the overview shows the target was not met. Revise the task's status to done and state where its follow-up is recorded. Completing the task does not mean the target was met. An outcome below the target does not prove why it fell short.
 
-## 6. Ändra regeln med erfarenheten som underlag
+## 6. Change the rule based on what happened
 
-Skapa ett ändringsförslag kopplat till beslutet och utfallet. Beskriv problemet: uttryckt intresse användes för att bedöma faktisk närvaro. Föreslå att framtida ärenden redovisar enkätsvar och bekräftade anmälningar separat. Ange önskat antal granskarkonton, obligatoriska grupper och högsta uppföljningstid.
+Create a change proposal linked to the decision and outcome. Describe the problem: expressed interest was used to estimate actual attendance. Propose that future cases report survey responses and confirmed bookings separately. Specify the desired number of reviewer accounts, required groups, and maximum follow-up period.
 
-Ägaren kan anta eller avslå förslaget med en motivering. Ett antagande skapar både regelbeslutet och en ny version av arbetsregeln. Kontrollera att ett nytt beslut kräver den nya versionen. Det första beslutet ska fortfarande visa regeln som gällde när det registrerades.
+The owner can accept or reject the proposal with a rationale. Acceptance creates both the rule resolution and a new version of the working rule. Check that a new decision requires the new version. The first decision should still show the rule that applied when it was registered.
 
-Rättelser görs genom revision. En ny post hänvisar till föregångaren med `supersedes`. Den gamla posten finns kvar, och tidigare hänvisningar ändras inte. När en observation revideras ska den som granskar ett äldre beslut kunna se att dess underlag har förändrats.
+Corrections are made through revision. A new record refers to its predecessor with `supersedes`. The old record remains, and earlier references do not change. When an observation is revised, someone reviewing an older decision should be able to see that its evidence has changed.
 
-## 7. Exportera, importera och fortsätt lokalt
+## 7. Export, import, and continue locally
 
-Exportera arbetsytan till en signerad JSON-fil. Paketet innehåller posthistoriken och uppgifter om nod, arbetsyta, exporttid, hashkedjans slutvärde, publik nyckel och signatur. Nodens privata nyckel följer inte med. Signaturen avser nodens exportkuvert, inte personliga signaturer från deltagarna.
+Export the workspace to a signed JSON file. The bundle contains the record history and details of the node, workspace, export time, hash-chain head, public key, and signature. It does not contain the node's private key. The signature covers the node's export envelope, not personal signatures from participants.
 
-Importera filen utan att ändra innehåll eller formatering. Mottagaren kontrollerar format, publik nyckel, fingeravtryck, Ed25519-signatur, posternas hashkedja och hänvisningar. En godkänd import skapar en separat skrivskyddad gren med den mottagna historiken.
+Import the file without changing its content or formatting. The recipient checks the format, public key, fingerprint, Ed25519 signature, record hash chain, and references. A successful import creates a separate read-only branch containing the received history.
 
-Jämför nyckelns fingeravtryck med avsändaren genom en separat känd kanal om du behöver fastställa vem avsändaren är. En giltig signatur säger att motsvarande nyckel har signerat paketet. Den säger inte att innehållet är sant, att organisationen har mandat eller att granskningen varit oberoende. Arbetsytans ägare kan dokumentera erkända och återkallade nycklar med sakområde och motivering.
+Compare the key's fingerprint with the sender through a separate, known channel if you need to establish who the sender is. A valid signature means that the corresponding key signed the bundle. It does not mean the content is true, the organisation has a mandate, or the review was independent. The workspace owner can document recognised and revoked keys with a domain and rationale.
 
-Skapa en lokal fortsättning av importen när du vill arbeta vidare. Den får egen åtkomst och en lokal arbetsregel. Importerade behörigheter följer inte med. Registrera lokala bedömningar före nya beslut; tidigare importerade bedömningar uppfyller inte automatiskt den nya grenens lokala granskningskrav. Försök fatta ett beslut innan lokal granskning finns och kontrollera att det avvisas.
+Create a local continuation of the import when you want to work further. It gets its own access permissions and a local working rule. Imported permissions are not carried over. Register local assessments before new decisions; previously imported assessments do not automatically satisfy the new branch's local review requirement. Try making a decision before local review exists and check that it is rejected.
 
-Exporter innehåller poster, inte bilagefiler, medlemsbehörigheter eller nodtillitsregister. En importerad källa kan därför visa en bilagereferens utan att filen finns på den nya noden. Dela nödvändiga filer separat, jämför deras SHA-256-värden och registrera den lokala tillgången till dem. Exporten är inte en fullständig driftbackup.
+Exports contain records, not attachment files, membership permissions, or node trust registers. An imported source may therefore show an attachment reference even when the file is absent from the new node. Share necessary files separately, compare their SHA-256 digests, and record their local availability. The export is not a complete operational backup.
 
-Grenarna förblir separata. CivOS synkroniserar dem inte automatiskt och avgör inte vilken gren som har rätt. Nya uppgifter, konflikter och fortsatt samarbete kräver lokal granskning och nya överföringar.
+The branches remain separate. CivOS does not synchronise them automatically or determine which branch is right. New information, conflicts, and continued cooperation require local review and further transfers.
 
-## Posttyperna i installationen
+## Record types in this installation
 
-| Post | Användning |
+| Record | Purpose |
 | --- | --- |
-| `case` | Avgränsa frågan, sammanhanget och berörda grupper. |
-| `actor` | Beskriva deltagare, uppdrag, grupper och intressen. |
-| `source` | Registrera källa, metod, ursprung, begränsningar och bilagereferens. |
-| `observation` | Skriva uppgiften med kategori, underlag, perspektiv och osäkerhet. |
-| `frame` | Beskriva ett perspektivs metod, antaganden och begränsningar. |
-| `concept` | Definiera ett begrepp inom ett perspektiv. |
-| `mapping` | Relatera två begrepp med omfattning, förlust och motivering. |
-| `assessment` | Granska en observation, begreppsrelation, ett alternativ eller utfall. |
-| `option` | Beskriva handlingsalternativets grund, nytta, kostnader och reversibilitet. |
-| `argument` | Dokumentera stöd, motstånd eller villkor för ett alternativ. |
-| `decision` | Registrera val, ansvar, mandat, osäkerhet, mål och regelversion. |
-| `task` | Följa genomförande, ansvarig, tidsfrist och status. |
-| `outcome` | Registrera mätvärde, underlag, begränsningar och nästa steg. |
-| `policy` | Ange arbetsregeln och dess procedurkrav. |
-| `rule_change` | Föreslå en regeländring utifrån konkreta erfarenheter. |
-| `rule_resolution` | Anta eller avslå ändringsförslaget med motivering. |
+| `case` | Define the question, context, and affected groups. |
+| `actor` | Describe participants, responsibilities, groups, and interests. |
+| `source` | Record a source, method, origin, limitations, and attachment reference. |
+| `observation` | State a claim with its category, evidence, perspective, and uncertainty. |
+| `frame` | Describe a perspective's method, assumptions, and limitations. |
+| `concept` | Define a concept within a perspective. |
+| `mapping` | Relate two concepts with scope, translation loss, and rationale. |
+| `assessment` | Review an observation, concept mapping, option, or outcome. |
+| `option` | Describe an action option's basis, benefits, costs, and reversibility. |
+| `argument` | Document support, opposition, or conditions for an option. |
+| `decision` | Record the choice, responsibility, mandate, uncertainty, target, and rule version. |
+| `task` | Track implementation, owner, deadline, and status. |
+| `outcome` | Record a measured value, evidence, limitations, and next step. |
+| `policy` | Define the working rule and its procedural requirements. |
+| `rule_change` | Propose a rule change based on specific experience. |
+| `rule_resolution` | Accept or reject the change proposal with a rationale. |
 
-Fält och validering definieras i `web/lib/model.ts`. Lagring, kontroller av behörighet och lokala grenar finns i `web/lib/store.ts`; paketets signering och verifiering finns i `web/lib/bundles.ts`.
+Fields and validation are defined in `web/lib/model.ts`. Storage, access checks, and local branches are in `web/lib/store.ts`; bundle signing and verification are in `web/lib/bundles.ts`.
 
-## Vad provkörningen visar
+## What the trial demonstrates
 
-Provkörningen visar om hela flödet går att genomföra och om avsedda begränsningar fungerar. Den visar inte att CivOS förbättrar besluten i en verklig organisation. För det behövs en jämförelse med det arbetssätt ni redan använder.
+The trial shows whether the complete workflow can be carried out and whether its intended constraints work. It does not show that CivOS improves decisions in a real organisation. That requires comparison with the way you already work.
 
-Låt någon som inte skrev besluten återfinna underlag, invändning, ansvarig, senaste revision, mål och utfall. Mät både träffsäkerhet och tid. Räkna även kostnaden för registrering och granskning. Dokumentera om deltagare kunde invända och om någon berörd grupp saknades.
+Ask someone who did not write the decisions to find their evidence, objections, responsible person, latest revision, target, and outcome. Measure both accuracy and time. Also count the cost of entering and reviewing records. Document whether participants could object and whether any affected group was absent.
 
-Ett legitimt mandat, faktasanning och decentraliserad konsensus uppstår inte automatiskt i en databas. CivOS gör det möjligt att dokumentera och pröva sådana anspråk. Människorna och organisationerna som använder systemet ansvarar för vad de betyder i praktiken.
+A legitimate mandate, factual truth, and decentralised consensus do not arise automatically in a database. CivOS makes it possible to document and examine such claims. The people and organisations using the system are responsible for what those claims mean in practice.
 
-
-Driftgränser: högst 1 900 poster och 1,5 MB kanonisk posthistorik per arbetsyta, 2 MB per överföringsfil och 5 MB per bilaga. Ärenden har beständiga ID:n och kan inte revideras. Vidareexport av en skrivskyddad import bevarar originalkuvert och signatur. En lokal fortsättning exporterar signerade ursprungsuppgifter: basens slutvärde och sekvens, ursprungsnod, nyckelfingeravtryck och originalkuvertets hash. Originalkvittot bevaras lokalt.
+Operational limits: at most 1,900 entries and 1.5 MB of canonical record history per workspace, 2 MB per transfer file, and 5 MB per attachment. Cases have stable IDs and cannot be revised. Re-exporting a read-only import preserves the original envelope and signature. A local continuation exports signed lineage metadata: the base head and sequence, source node, key fingerprint, and original envelope hash. The original receipt is retained locally.

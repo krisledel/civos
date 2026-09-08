@@ -27,6 +27,7 @@ import {
   type Finding,
 } from '@/lib/model';
 import type { Space } from '@/lib/store';
+import { optionLabel } from '@/lib/presentation';
 export type Snapshot = {
   space: Space;
   entries: Entry[];
@@ -52,7 +53,7 @@ export type Snapshot = {
   imports: { fingerprint: string; received_at: string }[];
 };
 export const date = (x: string) =>
-  new Date(x).toLocaleString('sv-SE', {
+  new Date(x).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
@@ -66,7 +67,7 @@ export async function request(
     body: JSON.stringify({ action, ...data }),
   });
   const b = (await res.json()) as { error: string; id: string; token: string };
-  if (!res.ok) throw Error(b.error || 'Åtgärden misslyckades.');
+  if (!res.ok) throw Error(b.error || 'The action failed.');
   return b;
 }
 export function Picker({
@@ -101,30 +102,28 @@ export function Picker({
 }
 export function dependencyHint(kind: string) {
   const hints: Record<string, string> = {
-    source: 'Ange källadress, insamlingsmetod, datum och begränsningar.',
+    source: 'Enter the source URL, collection method, date and limitations.',
     observation:
-      'Registrera en källa först. Observationen ska hänvisa till sitt underlag.',
-    concept: 'Lägg först till det perspektiv där begreppet har sin betydelse.',
-    mapping:
-      'Lägg till två begrepp och beskriv vad som går förlorat i översättningen.',
+      'Register a source first. The observation must refer to its evidence.',
+    concept: 'First add the perspective in which the concept has its meaning.',
+    mapping: 'Add two concepts and describe what is lost in translation.',
     assessment:
-      'Lägg till en deltagare och en observation eller annan post att granska.',
+      'Add a participant and an observation or another record to review.',
     option:
-      'Lägg till observationer som kunskapsgrund. Beskriv nytta, kostnader och möjlighet att avbryta.',
-    argument: 'Välj ett alternativ och den deltagare som framför argumentet.',
+      'Add observations as the evidence base. Describe benefits, costs and how to stop or reverse the action.',
+    argument: 'Choose an option and the participant making the argument.',
     decision:
-      'Granska alternativets observationer enligt arbetsregeln. Ange mandat, ansvar, mål och uppföljning.',
-    task: 'Registrera ett beslut och knyt genomförandet till en ansvarig.',
+      'Review the observations behind the option as required by the working rule. Specify authority, responsibility, targets and follow-up.',
+    task: 'Register a decision and assign responsibility for carrying it out.',
     outcome:
-      'Registrera ett beslut och en källa för utfallet. Använd samma enhet som beslutets mål.',
+      'Register a decision and a source for the outcome. Use the same unit as the decision target.',
     rule_change:
-      'Knyt förslaget till gällande arbetsregel och de poster som visar problemet.',
+      'Link the proposal to the current working rule and the records that demonstrate the problem.',
     rule_resolution:
-      'Välj ett regelförslag. Ett antaget förslag skapar automatiskt nästa arbetsregel.',
+      'Choose a rule proposal. Adopting it automatically creates the next working rule.',
   };
   return (
-    hints[kind] ||
-    'Lägg till en post för att göra den tillgänglig för resten av arbetet.'
+    hints[kind] || 'Add a record to make it available throughout the workspace.'
   );
 }
 export function EntryDialog({
@@ -201,7 +200,7 @@ export function EntryDialog({
       });
       await saved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunde inte spara.');
+      setError(e instanceof Error ? e.message : 'Could not save.');
     } finally {
       setBusy(false);
     }
@@ -216,12 +215,12 @@ export function EntryDialog({
       <DialogContent className="wide-dialog">
         <DialogHeader>
           <DialogTitle>
-            {editor.entry ? 'Revidera' : 'Lägg till'}{' '}
-            {schema.label.toLocaleLowerCase('sv')}
+            {editor.entry ? 'Revise' : 'Add'}{' '}
+            {schema.label.toLocaleLowerCase('en')}
           </DialogTitle>
           <DialogDescription>
             {editor.entry
-              ? 'En ny version läggs till. Den tidigare versionen och dess hänvisningar bevaras.'
+              ? 'A new version will be added. The previous version and its references are preserved.'
               : dependencyHint(editor.kind)}
           </DialogDescription>
         </DialogHeader>
@@ -245,7 +244,7 @@ export function EntryDialog({
             ))}
           {editor.kind === 'source' && (
             <label className="upload-field">
-              Bilaga (valfritt, högst 5 MB)
+              Attachment (optional, up to 5 MB)
               <Input
                 type="file"
                 onChange={async (e) => {
@@ -255,7 +254,9 @@ export function EntryDialog({
                   setError('');
                   try {
                     if (file.size > 5_000_000)
-                      throw Error('Bilagan får vara högst 5 MB.');
+                      throw Error(
+                        'The attachment must be no larger than 5 MB.',
+                      );
                     const body = new FormData();
                     body.set('file', file);
                     const r = await fetch('/api/civos?space=' + snap.space.id, {
@@ -278,7 +279,7 @@ export function EntryDialog({
                     setError(
                       e instanceof Error
                         ? e.message
-                        : 'Bilagan kunde inte sparas.',
+                        : 'The attachment could not be saved.',
                     );
                   } finally {
                     setBusy(false);
@@ -287,19 +288,19 @@ export function EntryDialog({
               />
               {data.artifactId && (
                 <small>
-                  Bilaga sparad · {String(data.artifactDigest).slice(0, 16)}…
+                  Attachment saved · {String(data.artifactDigest).slice(0, 16)}…
                 </small>
               )}
             </label>
           )}
           <div className="form-footer">
-            <p>Obligatoriska fält är märkta med *.</p>
+            <p>Required fields are marked with *.</p>
             <Button className="primary-action" disabled={busy}>
               {busy
-                ? 'Sparar…'
+                ? 'Saving…'
                 : editor.entry
-                  ? 'Spara revision'
-                  : 'Spara post'}
+                  ? 'Save revision'
+                  : 'Save record'}
             </Button>
           </div>
         </form>
@@ -346,10 +347,10 @@ function FieldInput({
         change={change}
         label={label}
         options={[
-          { id: '', label: 'Välj…' },
+          { id: '', label: 'Choose…' },
           ...(f.type === 'ref'
             ? candidates.map((e) => ({ id: e.id, label: String(e.data.title) }))
-            : f.options!.map((s) => ({ id: s, label: s }))),
+            : f.options!.map((s) => ({ id: s, label: optionLabel(f, s) }))),
         ]}
       />
     );
@@ -376,9 +377,9 @@ function FieldInput({
           ))
         ) : (
           <p className="help">
-            Det finns inga valbara poster ännu.{' '}
-            {f.targets?.map((k) => kinds[k].plural).join(' / ')} behöver
-            registreras först.
+            No records are available to select yet.{' '}
+            {f.targets?.map((k) => kinds[k].plural).join(' / ')} must be
+            registered first.
           </p>
         )}
       </fieldset>
@@ -478,7 +479,7 @@ function ListInput({
             .filter(Boolean),
         );
       }}
-      placeholder="Separera med kommatecken"
+      placeholder="Separate with commas"
       required={required}
     />
   );

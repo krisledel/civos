@@ -46,7 +46,7 @@ export function RecordGraph({
           edges.push({ from: e.id, to: id, label: f.label });
       }
       if (showCases && e.caseId)
-        edges.push({ from: e.id, to: e.caseId, label: 'Tillhör ärende' });
+        edges.push({ from: e.id, to: e.caseId, label: 'Belongs to case' });
     }
     const related = new Set(edges.flatMap((e) => [e.from, e.to]));
     const currentIds = new Set(current.map((e) => e.id));
@@ -59,8 +59,8 @@ export function RecordGraph({
         (showCases || e.kind !== 'case') &&
         (!query ||
           String(e.data.title)
-            .toLocaleLowerCase('sv')
-            .includes(query.toLocaleLowerCase('sv'))),
+            .toLocaleLowerCase('en')
+            .includes(query.toLocaleLowerCase('en'))),
     );
     if (query) {
       const hits = new Set(pool.map((e) => e.id));
@@ -147,9 +147,9 @@ export function RecordGraph({
       <div className="graph-toolbar">
         <div>
           <Network size={17} />
-          <strong>Sambandsgraf</strong>
+          <strong>Reference graph</strong>
           <span>
-            {graph.nodes.length} dokument · {graph.edges.length} länkar
+            {graph.nodes.length} documents · {graph.edges.length} links
           </span>
         </div>
         <Button
@@ -162,16 +162,16 @@ export function RecordGraph({
           }}
         >
           <Focus size={15} />
-          Återställ
+          Reset
         </Button>
       </div>
       <div className="graph-search">
         <Search size={16} />
         <Input
-          aria-label="Sök i grafen"
+          aria-label="Search graph"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Sök ett dokument och dess samband…"
+          placeholder="Find a document and its references…"
         />
         <label htmlFor="graph-cases">
           <Checkbox
@@ -179,7 +179,7 @@ export function RecordGraph({
             checked={showCases}
             onCheckedChange={(v) => setShowCases(v)}
           />
-          Ärendelänkar
+          Case links
         </label>
       </div>
       {graph.nodes.length ? (
@@ -188,9 +188,9 @@ export function RecordGraph({
             <svg
               viewBox={`${400 - 400 / zoom} ${250 - 250 / zoom} ${800 / zoom} ${500 / zoom}`}
               role="img"
-              aria-label="Sambandsgraf. Dokumenten kan också öppnas i listan nedanför."
+              aria-label="Reference graph. Documents can also be opened from the list below."
             >
-              <title>Arbetsytans dokument och riktade hänvisningar</title>
+              <title>Workspace documents and directed references</title>
               <defs>
                 <pattern
                   id="graph-grid"
@@ -323,7 +323,7 @@ export function RecordGraph({
             <div className="graph-zoom">
               <Button
                 variant="ghost"
-                aria-label="Zooma ut"
+                aria-label="Zoom out"
                 disabled={zoom <= 0.7}
                 onClick={() => setZoom((z) => Math.max(0.7, z - 0.2))}
               >
@@ -332,7 +332,7 @@ export function RecordGraph({
               <span>{Math.round(zoom * 100)}%</span>
               <Button
                 variant="ghost"
-                aria-label="Zooma in"
+                aria-label="Zoom in"
                 disabled={zoom >= 1.7}
                 onClick={() => setZoom((z) => Math.min(1.7, z + 0.2))}
               >
@@ -351,13 +351,13 @@ export function RecordGraph({
                   {
                     (
                       {
-                        overview: 'Ärende',
-                        observe: 'Underlag',
-                        frames: 'Perspektiv',
-                        trust: 'Granskning',
-                        decide: 'Beslut',
-                        outcomes: 'Utfall',
-                        coordinate: 'Arbetsregel',
+                        overview: 'Case',
+                        observe: 'Evidence',
+                        frames: 'Perspectives',
+                        trust: 'Review',
+                        decide: 'Decisions',
+                        outcomes: 'Outcomes',
+                        coordinate: 'Working rule',
                       } as Record<string, string>
                     )[layer]
                   }
@@ -369,25 +369,23 @@ export function RecordGraph({
         <div className="graph-empty">
           <Network size={45} />
           <h3>
-            {query
-              ? 'Inga matchande dokument'
-              : 'Sambanden växer med ditt arbete'}
+            {query ? 'No matching documents' : 'References grow as you work'}
           </h3>
           <p>
-            Koppla en observation till en källa, ett argument till ett
-            alternativ eller ett utfall till ett beslut.
+            Link an observation to a source, an argument to an option or an
+            outcome to a decision.
           </p>
         </div>
       )}
       {graph.total > 80 && (
         <p className="help">
-          Visar 80 av {graph.total} dokument. Sök eller välj ett ärende för att
-          avgränsa grafen.
+          Showing 80 of {graph.total} documents. Search or choose a case to
+          narrow the graph.
         </p>
       )}
       {graph.nodes.length > 0 && (
         <details className="graph-accessible">
-          <summary>Dokument och relationer som lista</summary>
+          <summary>Documents and relations as a list</summary>
           <div>
             {graph.nodes.map((n) => (
               <button key={n.entry.id} onClick={() => onOpen(n.entry)}>

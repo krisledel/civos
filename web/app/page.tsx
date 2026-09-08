@@ -68,15 +68,16 @@ import { RecordGraph } from '@/components/civos/graph';
 import { CaseWorkbench } from '@/components/civos/case-workbench';
 import { QuickSwitcher } from '@/components/civos/quick-switcher';
 import type { Space } from '@/lib/store';
+import { fieldDisplay, recordStatus, recordSearch } from '@/lib/presentation';
 const layers = [
-  { id: 'overview', name: 'Arbetsfält', icon: Workflow },
-  { id: 'graph', name: 'Sambandsgraf', icon: Network },
-  { id: 'observe', name: 'Observationer', icon: Eye },
-  { id: 'frames', name: 'Perspektiv', icon: Network },
-  { id: 'trust', name: 'Granskning', icon: ShieldCheck },
-  { id: 'decide', name: 'Beslut & åtgärder', icon: Scale },
-  { id: 'outcomes', name: 'Uppföljning', icon: Activity },
-  { id: 'coordinate', name: 'Samordning', icon: Settings2 },
+  { id: 'overview', name: 'Workbench', icon: Workflow },
+  { id: 'graph', name: 'Reference graph', icon: Network },
+  { id: 'observe', name: 'Observations', icon: Eye },
+  { id: 'frames', name: 'Perspectives', icon: Network },
+  { id: 'trust', name: 'Review', icon: ShieldCheck },
+  { id: 'decide', name: 'Decisions & actions', icon: Scale },
+  { id: 'outcomes', name: 'Follow-up', icon: Activity },
+  { id: 'coordinate', name: 'Coordination', icon: Settings2 },
 ];
 function saveFile(content: Blob, name: string) {
   const url = URL.createObjectURL(content),
@@ -207,7 +208,7 @@ export default function Home() {
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Åtgärden misslyckades.');
+      setError(e instanceof Error ? e.message : 'The action failed.');
     } finally {
       setBusy(false);
     }
@@ -226,10 +227,7 @@ export default function Home() {
   const visible = current.filter(
     (e) =>
       (caseId === 'all' || !e.caseId || e.caseId === caseId) &&
-      (!search ||
-        JSON.stringify(e.data)
-          .toLocaleLowerCase('sv')
-          .includes(search.toLocaleLowerCase('sv'))),
+      (!search || recordSearch(e).includes(search.toLocaleLowerCase('en'))),
   );
   const kindOptions = Object.entries(kinds).filter(
       ([, v]) => v.layer === layer,
@@ -251,7 +249,7 @@ export default function Home() {
   };
   const newEntry = (k: string) => {
     if (!kinds[k].global && caseId === 'all' && cases.length !== 1) {
-      setError('Välj ett ärende i listan ovan innan du lägger till en post.');
+      setError('Choose a case above before adding a record.');
       return;
     }
     setEditor({ kind: k });
@@ -261,19 +259,19 @@ export default function Home() {
       const r = await fetch('/api/civos?space=' + sid + '&export=1');
       if (!r.ok) throw Error(((await r.json()) as { error: string }).error);
       saveFile(await r.blob(), 'civos-export.json');
-      setNotice('Signerad export sparad. Bilagor laddas ner separat.');
+      setNotice('Signed export saved. Download attachments separately.');
     });
   const csv = () => {
     const rows = [
       [
-        'sekvens',
+        'sequence',
         'id',
-        'typ',
-        'ärende',
-        'rubrik',
-        'registrerande konto',
-        'tidpunkt',
-        'ersätter',
+        'type',
+        'case',
+        'title',
+        'recording account',
+        'timestamp',
+        'supersedes',
         'hash',
       ],
       ...entries.map((e) => [
@@ -298,7 +296,7 @@ export default function Home() {
         ['\uFEFF' + rows.map((r) => r.map(cell).join(';')).join('\r\n')],
         { type: 'text/csv;charset=utf-8' },
       ),
-      'civos-register.csv',
+      'civos-records.csv',
     );
   };
   return (
@@ -316,11 +314,11 @@ export default function Home() {
       />
       <Sidebar className="civos-sidebar">
         <SidebarHeader>
-          <span className="sidebar-title">Dokument & vyer</span>
+          <span className="sidebar-title">Documents & views</span>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>VYER</SidebarGroupLabel>
+            <SidebarGroupLabel>VIEWS</SidebarGroupLabel>
             <SidebarMenu>
               {layers.map((x, i) => (
                 <SidebarMenuItem key={x.id}>
@@ -340,7 +338,7 @@ export default function Home() {
           </SidebarGroup>
           <SidebarGroup className="document-tree">
             <SidebarGroupLabel>
-              DOKUMENT <span>{current.length}</span>
+              DOCUMENTS <span>{current.length}</span>
             </SidebarGroupLabel>
             {cases.map((c) => (
               <details key={c.id} open={caseId === c.id || cases.length === 1}>
@@ -348,7 +346,7 @@ export default function Home() {
                   <FolderOpen size={14} />
                   <span>{String(c.data.title)}</span>
                   <button
-                    aria-label={'Visa ärendet ' + c.data.title}
+                    aria-label={'Open case ' + c.data.title}
                     onClick={(e) => {
                       e.preventDefault();
                       setCase(c.id);
@@ -376,7 +374,7 @@ export default function Home() {
               </details>
             ))}
             {!cases.length && (
-              <p>Ärenden och dokument visas här när du börjar arbeta.</p>
+              <p>Cases and documents appear here as you work.</p>
             )}
           </SidebarGroup>
         </SidebarContent>
@@ -386,11 +384,11 @@ export default function Home() {
       </Sidebar>
       <SidebarInset>
         <header className="workspace-top">
-          <SidebarTrigger aria-label="Öppna dokumentpanelen" />
+          <SidebarTrigger aria-label="Toggle document panel" />
           <button
             className="wordmark"
             onClick={() => navigate('overview')}
-            aria-label="CivOS arbetsfält"
+            aria-label="CivOS workbench"
           >
             Civ<span>OS</span>
             <i />
@@ -404,7 +402,7 @@ export default function Home() {
                   id: space.id,
                   label: space.title,
                 }))}
-                label="Välj arbetsyta"
+                label="Choose workspace"
               />
             )}
           </div>
@@ -417,8 +415,8 @@ export default function Home() {
             variant="ghost"
             onClick={() => setSpaceDialog(true)}
             disabled={auth || busy}
-            aria-label="Skapa arbetsyta"
-            title="Skapa arbetsyta"
+            aria-label="Create workspace"
+            title="Create workspace"
           >
             <Plus size={17} />
           </Button>
@@ -427,14 +425,14 @@ export default function Home() {
               variant="ghost"
               onClick={() => run(refresh)}
               disabled={busy}
-              aria-label="Uppdatera arbetsytan"
-              title="Uppdatera arbetsytan"
+              aria-label="Refresh workspace"
+              title="Refresh workspace"
             >
               <RefreshCw size={16} />
             </Button>
           )}
         </header>
-        <nav className="view-navigation" aria-label="Arbetsvyer">
+        <nav className="view-navigation" aria-label="Workspace views">
           {layers.map((view) => (
             <button
               key={view.id}
@@ -455,7 +453,7 @@ export default function Home() {
                 <h1>{title}</h1>
                 <p>
                   {snap?.space.purpose ||
-                    'Samla underlag. Pröva perspektiv. Följ besluten.'}
+                    'Gather evidence. Examine perspectives. Follow decisions.'}
                 </p>
               </div>
             </div>
@@ -464,24 +462,24 @@ export default function Home() {
             <div role="alert" className="message error">
               <span>{error}</span>
               <Button variant="ghost" onClick={() => run(refresh)}>
-                Läs in igen
+                Reload
               </Button>
             </div>
           )}
           {notice && <output className="message success">{notice}</output>}
           {auth ? (
             <section className="panel">
-              <h2>Öppna din arbetsyta</h2>
-              <p>Logga in för att läsa och spara ärenden.</p>
+              <h2>Open your workspace</h2>
+              <p>Sign in to read and save cases.</p>
               <button
                 className="action-link"
                 onClick={() => window.location.assign('/signin-with-chatgpt')}
               >
-                Logga in <ArrowRight size={16} />
+                Sign in <ArrowRight size={16} />
               </button>
             </section>
           ) : !loaded ? (
-            <output>Läser arbetsytor…</output>
+            <output>Loading workspaces…</output>
           ) : (
             <>
               {layer !== 'overview' && (
@@ -492,19 +490,19 @@ export default function Home() {
                         value={caseId}
                         change={setCase}
                         options={[
-                          { id: 'all', label: 'Alla ärenden' },
+                          { id: 'all', label: 'All cases' },
                           ...cases.map((e) => ({
                             id: e.id,
                             label: String(e.data.title),
                           })),
                         ]}
-                        label="Ärende"
+                        label="Case"
                       />
                       <Button
                         variant="outline"
                         onClick={() => run(refresh)}
                         disabled={busy}
-                        aria-label="Uppdatera"
+                        aria-label="Refresh"
                       >
                         <RefreshCw size={16} />
                       </Button>
@@ -518,30 +516,30 @@ export default function Home() {
                     <Layers3 />
                   </div>
                   <div>
-                    <span className="small-label">DIN FÖRSTA ARBETSYTA</span>
-                    <h2>Skapa en arbetsyta.</h2>
+                    <span className="small-label">YOUR FIRST WORKSPACE</span>
+                    <h2>Create a workspace.</h2>
                     <p>
-                      Avgränsa en fråga. Registrera underlag, pröva påståenden
-                      och följ beslut genom en versionerad historik.
+                      Define a question. Record evidence, examine claims and
+                      track decisions through a versioned history.
                     </p>
                     <Button
                       className="primary-action"
                       onClick={() => setSpaceDialog(true)}
                     >
-                      Skapa arbetsyta <ArrowRight />
+                      Create workspace <ArrowRight />
                     </Button>
                   </div>
                 </section>
               ) : !snap ? (
-                <output>Läser sparad historik…</output>
+                <output>Loading saved history…</output>
               ) : (
                 <>
                   {snap.space.read_only === 1 && (
                     <div className="message">
                       <GitBranch size={20} />
                       <span>
-                        Importerad gren. Signaturen och historiken är
-                        verifierade; påståendena behöver granskas.
+                        Imported branch. Its signature and history are verified;
+                        its claims still need review.
                       </span>
                       <Button
                         onClick={() =>
@@ -552,7 +550,7 @@ export default function Home() {
                         }
                         disabled={busy}
                       >
-                        Skapa lokal fortsättning
+                        Create local continuation
                       </Button>
                     </div>
                   )}
@@ -613,17 +611,17 @@ export default function Home() {
                       <div className="search-row">
                         <Search size={18} />
                         <Input
-                          aria-label="Sök i poster"
-                          placeholder="Sök i rubrik och innehåll…"
+                          aria-label="Search records"
+                          placeholder="Search titles and content…"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                         />
                       </div>
                       {kind === 'policy' && (
                         <p className="help">
-                          Arbetsregler ändras genom regelförslag och
-                          regelbeslut. Beslut behåller hänvisningen till sin
-                          ursprungliga regelversion.
+                          Working rules change through rule proposals and rule
+                          decisions. Each decision keeps its reference to the
+                          original rule version.
                         </p>
                       )}
                       {visible.filter((e) => e.kind === kind).length ? (
@@ -645,16 +643,12 @@ export default function Home() {
                                   <small>
                                     {e.caseId
                                       ? String(byId.get(e.caseId)?.data.title)
-                                      : 'Gemensamt för arbetsytan'}{' '}
+                                      : 'Shared across the workspace'}{' '}
                                     · {date(e.createdAt)}
                                   </small>
                                 </span>
                                 <span className="record-tag">
-                                  {String(
-                                    e.data.verdict ||
-                                      e.data.status ||
-                                      kinds[e.kind].label,
-                                  )}
+                                  {recordStatus(e)}
                                 </span>
                                 <ArrowRight size={17} />
                               </button>
@@ -663,24 +657,23 @@ export default function Home() {
                       ) : (
                         <div className="empty">
                           <h3>
-                            Inga {kinds[kind]?.plural.toLocaleLowerCase('sv')}{' '}
-                            ännu
+                            No {kinds[kind]?.plural.toLocaleLowerCase('en')} yet
                           </h3>
                           <p>{dependencyHint(kind)}</p>
                         </div>
                       )}
                       {layer === 'decide' && (
                         <section className="panel comparison">
-                          <h2>Jämför handlingsalternativ</h2>
+                          <h2>Compare options</h2>
                           <div className="table-scroll">
                             <table>
                               <thead>
                                 <tr>
-                                  <th>Alternativ</th>
-                                  <th>Nytta</th>
-                                  <th>Kostnader</th>
-                                  <th>Återställbarhet</th>
-                                  <th>Argument</th>
+                                  <th>Option</th>
+                                  <th>Benefits</th>
+                                  <th>Costs</th>
+                                  <th>Reversibility</th>
+                                  <th>Arguments</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -712,8 +705,12 @@ export default function Home() {
                                               className="reference"
                                               onClick={() => openDocument(a)}
                                             >
-                                              {String(a.data.position)}:{' '}
-                                              {String(a.data.title)}
+                                              {fieldDisplay(
+                                                a.kind,
+                                                'position',
+                                                a.data.position,
+                                              )}
+                                              : {String(a.data.title)}
                                             </button>
                                           ))}
                                       </td>
@@ -727,7 +724,7 @@ export default function Home() {
                       {layer === 'frames' &&
                         current.some((e) => e.kind === 'mapping') && (
                           <section className="panel">
-                            <h2>Betydelsernas samband</h2>
+                            <h2>Concept relations</h2>
                             {visible
                               .filter((e) => e.kind === 'mapping')
                               .map((e) => (
@@ -743,7 +740,12 @@ export default function Home() {
                                     )}
                                   </span>
                                   <span className="relation-label">
-                                    {String(e.data.relation)} →
+                                    {fieldDisplay(
+                                      e.kind,
+                                      'relation',
+                                      e.data.relation,
+                                    )}{' '}
+                                    →
                                   </span>
                                   <span>
                                     {String(
@@ -756,7 +758,7 @@ export default function Home() {
                         )}
                       {layer === 'outcomes' && (
                         <section className="panel">
-                          <h2>Mål och utfall</h2>
+                          <h2>Targets and outcomes</h2>
                           {visible
                             .filter((e) => e.kind === 'outcome')
                             .map((o) => {
@@ -778,11 +780,16 @@ export default function Home() {
                                     }
                                   >
                                     {meetsTarget(o, d)
-                                      ? 'Målvillkoret uppnått'
-                                      : 'Målet är inte uppnått'}
+                                      ? 'Target condition met'
+                                      : 'Target not met'}
                                   </span>
                                   <small>
-                                    Mål: {String(d.data.operator)}{' '}
+                                    Target:{' '}
+                                    {fieldDisplay(
+                                      d.kind,
+                                      'operator',
+                                      d.data.operator,
+                                    )}{' '}
                                     {String(d.data.target)}{' '}
                                     {String(d.data.unit)}
                                   </small>
@@ -790,9 +797,9 @@ export default function Home() {
                               ) : null;
                             })}
                           <p className="help">
-                            Ett uppnått målvillkor visar mätvärdets relation
-                            till målet. Det fastställer inte vad som orsakade
-                            utfallet.
+                            Meeting a target condition shows how the measurement
+                            compares with the target. It does not establish what
+                            caused the outcome.
                           </p>
                         </section>
                       )}
@@ -800,7 +807,7 @@ export default function Home() {
                         <>
                           <section className="panel">
                             <div className="section-bar">
-                              <h2>Överföring mellan noder</h2>
+                              <h2>Exchange between nodes</h2>
                               <div className="button-row">
                                 <Button
                                   variant="outline"
@@ -808,15 +815,15 @@ export default function Home() {
                                   disabled={busy}
                                 >
                                   <Download />
-                                  Signerad export
+                                  Signed export
                                 </Button>
                                 <Button variant="outline" onClick={csv}>
                                   <Download />
-                                  Register CSV
+                                  Records CSV
                                 </Button>
                                 <label className="file-button">
                                   <Upload size={16} />
-                                  Importera gren
+                                  Import branch
                                   <input
                                     type="file"
                                     accept=".json,application/json"
@@ -826,14 +833,14 @@ export default function Home() {
                                         void run(async () => {
                                           if (file.size > 2_000_000)
                                             throw Error(
-                                              'Filen får vara högst 2 MB.',
+                                              'The file must be no larger than 2 MB.',
                                             );
                                           const d = await request('import', {
                                             envelope: await file.text(),
                                           });
                                           await refreshSpaces(d.id);
                                           setNotice(
-                                            'Signaturen och postkedjan har verifierats. Grenen är skrivskyddad.',
+                                            'The signature and record chain are verified. The branch is read-only.',
                                           );
                                         });
                                       e.target.value = '';
@@ -843,43 +850,44 @@ export default function Home() {
                               </div>
                             </div>
                             <p>
-                              Exporten bevarar hela posthistoriken och signeras
-                              av noden. Import skapar en separat skrivskyddad
-                              gren. Bilagor och behörigheter överförs inte.
+                              Exports preserve the complete record history and
+                              are signed by the node. Imports create a separate
+                              read-only branch. Attachments and access
+                              permissions are not transferred.
                             </p>
                             {snap.imports.map((i, n) => (
                               <div className="fingerprint" key={n}>
-                                <span>Importerad {date(i.received_at)}</span>
+                                <span>Imported {date(i.received_at)}</span>
                                 <code>{i.fingerprint}</code>
                                 <span>
                                   {snap.trust.find(
                                     (t) => t.fingerprint === i.fingerprint,
                                   )?.status === 'recognized'
-                                    ? 'Lokalt igenkänd nyckel'
+                                    ? 'Locally recognized key'
                                     : snap.trust.find(
                                           (t) =>
                                             t.fingerprint === i.fingerprint,
                                         )?.status === 'revoked'
-                                      ? 'Lokalt återkallad nyckel'
-                                      : 'Okänd nyckel — identiteten är inte bekräftad'}
+                                      ? 'Locally revoked key'
+                                      : 'Unknown key — identity unconfirmed'}
                                 </span>
                               </div>
                             ))}
                             <p className="help">
-                              En giltig signatur identifierar nyckeln som
-                              signerade paketet. Den bevisar varken personernas
-                              identitet eller innehållets riktighet.
+                              A valid signature identifies the key that signed
+                              the bundle. It does not prove anyone’s identity or
+                              the accuracy of the content.
                             </p>
                           </section>
                           <section className="panel">
                             <div className="section-bar">
-                              <h2>Lokalt register över nodnycklar</h2>
+                              <h2>Local node key registry</h2>
                               {snap.space.role === 'owner' && (
                                 <Button
                                   variant="outline"
                                   onClick={() => setTrustDialog(true)}
                                 >
-                                  Registrera / återkalla nyckel
+                                  Register / revoke key
                                 </Button>
                               )}
                             </div>
@@ -895,27 +903,27 @@ export default function Home() {
                                   <code>{t.fingerprint}</code>
                                   <p>
                                     {t.status === 'recognized'
-                                      ? 'Igenkänd'
-                                      : 'Återkallad'}{' '}
+                                      ? 'Recognized'
+                                      : 'Revoked'}{' '}
                                     · {t.reason}
                                   </p>
                                 </div>
                               ))
                             ) : (
                               <p>
-                                Inga nycklar har erkänts lokalt. Jämför
-                                fingeravtrycket med avsändaren innan en nyckel
-                                registreras.
+                                No keys have been recognized locally. Compare
+                                the fingerprint with the sender before
+                                registering a key.
                               </p>
                             )}
                           </section>
                           <section className="panel">
-                            <h2>Deltagande och behörighet</h2>
+                            <h2>Members and access</h2>
                             <p className="help">
-                              Kontoroller styr åtkomst. Deltagarposter beskriver
-                              uppdrag och intressen och ger ingen
-                              inloggningsbehörighet. Andra konton behöver även
-                              åtkomst till denna webbinstallation.
+                              Account roles control access. Participant records
+                              describe responsibilities and interests; they do
+                              not grant sign-in access. Other accounts also need
+                              access to this web installation.
                             </p>
                             {snap.members.map((m) => (
                               <div className="member-row" key={m.principal}>
@@ -927,10 +935,10 @@ export default function Home() {
                                   {
                                     (
                                       {
-                                        owner: 'Ägare',
-                                        editor: 'Redaktör',
-                                        reviewer: 'Granskare',
-                                        viewer: 'Läsare',
+                                        owner: 'Owner',
+                                        editor: 'Editor',
+                                        reviewer: 'Reviewer',
+                                        viewer: 'Viewer',
                                       } as Record<string, string>
                                     )[m.role]
                                   }
@@ -949,7 +957,7 @@ export default function Home() {
                                         })
                                       }
                                     >
-                                      Ta bort åtkomst
+                                      Remove access
                                     </Button>
                                   )}
                               </div>
@@ -960,11 +968,11 @@ export default function Home() {
                                   <Picker
                                     value={inviteRole}
                                     change={setInviteRole}
-                                    label="Inbjudans roll"
+                                    label="Invitation role"
                                     options={[
-                                      { id: 'reviewer', label: 'Granskare' },
-                                      { id: 'editor', label: 'Redaktör' },
-                                      { id: 'viewer', label: 'Läsare' },
+                                      { id: 'reviewer', label: 'Reviewer' },
+                                      { id: 'editor', label: 'Editor' },
+                                      { id: 'viewer', label: 'Viewer' },
                                     ]}
                                   />
                                   <Button
@@ -980,11 +988,11 @@ export default function Home() {
                                       })
                                     }
                                   >
-                                    Skapa engångsinbjudan
+                                    Create single-use invitation
                                   </Button>
                                   {invite && (
                                     <label htmlFor="invite-token">
-                                      Inbjudningskod · giltig ett dygn
+                                      Invitation code · valid for 24 hours
                                       <Input
                                         id="invite-token"
                                         value={invite}
@@ -997,7 +1005,7 @@ export default function Home() {
                               )}
                           </section>
                           <section className="panel">
-                            <h2>Bilagor</h2>
+                            <h2>Attachments</h2>
                             {snap.attachments.length ? (
                               snap.attachments.map((a) => (
                                 <div className="attachment-row" key={a.id}>
@@ -1016,9 +1024,7 @@ export default function Home() {
                                 </div>
                               ))
                             ) : (
-                              <p>
-                                Bilagor läggs till när en källa registreras.
-                              </p>
+                              <p>Add attachments when registering a source.</p>
                             )}
                           </section>
                         </>
@@ -1027,10 +1033,10 @@ export default function Home() {
                   )}
                   <footer className="workspace-foot">
                     <span>
-                      {entries.length} poster ·{' '}
-                      {snap.space.role === 'owner' ? 'Ägare' : snap.space.role}
+                      {entries.length} records ·{' '}
+                      {snap.space.role === 'owner' ? 'Owner' : snap.space.role}
                     </span>
-                    <span>Historiken verifierad vid senaste inläsning</span>
+                    <span>History verified at last load</span>
                     <code title={snap.space.head}>
                       {snap.space.head.slice(0, 16)}…
                     </code>
@@ -1043,24 +1049,24 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Installationsguide och genomgång ↗
+                  Installation guide and walkthrough ↗
                 </a>
                 <a
                   href="/articles/civos-instruction-set.html"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Arkitektur och instruktioner ↗
+                  Architecture and instructions ↗
                 </a>
               </div>
               <section className="join-section">
                 <label htmlFor="join-token">
-                  Har du en inbjudningskod?
+                  Have an invitation code?
                   <Input
                     id="join-token"
                     value={joinToken}
                     onChange={(e) => setJoin(e.target.value)}
-                    placeholder="Klistra in engångskoden"
+                    placeholder="Paste the single-use code"
                   />
                 </label>
                 <Button
@@ -1074,7 +1080,7 @@ export default function Home() {
                     })
                   }
                 >
-                  Anslut till arbetsyta
+                  Join workspace
                 </Button>
               </section>
             </>
@@ -1084,9 +1090,9 @@ export default function Home() {
       <Dialog open={spaceDialog} onOpenChange={setSpaceDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ny arbetsyta</DialogTitle>
+            <DialogTitle>New workspace</DialogTitle>
             <DialogDescription>
-              Samla ett gemensamt arbete med egen historik och arbetsregel.
+              Create a shared workspace with its own history and working rule.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -1105,11 +1111,11 @@ export default function Home() {
             }}
           >
             <label htmlFor="space-title">
-              Namn
+              Name
               <Input id="space-title" name="title" required maxLength={150} />
             </label>
             <label htmlFor="space-purpose">
-              Syfte
+              Purpose
               <Textarea
                 id="space-purpose"
                 name="purpose"
@@ -1118,7 +1124,7 @@ export default function Home() {
               />
             </label>
             <Button className="form-save" disabled={busy}>
-              Skapa arbetsyta
+              Create workspace
             </Button>
           </form>
         </DialogContent>
@@ -1132,17 +1138,17 @@ export default function Home() {
           saved={async () => {
             setEditor(null);
             await refresh();
-            setNotice('Posten har sparats i historiken.');
+            setNotice('The record has been saved to the history.');
           }}
         />
       )}
       {detail && (
-        <aside className="document-pane" aria-label="Öppet dokument">
+        <aside className="document-pane" aria-label="Open document">
           <div className="document-toolbar">
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Föregående dokument"
+              aria-label="Previous document"
               disabled={!documentHistory.length}
               onClick={previousDocument}
             >
@@ -1156,14 +1162,14 @@ export default function Home() {
               variant="ghost"
               size="sm"
               onClick={() => navigate('graph')}
-              aria-label="Visa dokumentets samband"
+              aria-label="Show document references"
             >
               <Network size={16} />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Stäng dokument"
+              aria-label="Close document"
               onClick={() => openDocument(null)}
             >
               <X size={16} />
@@ -1182,8 +1188,8 @@ export default function Home() {
             <div className="document-state">
               <span>
                 {entries.some((e) => e.supersedes === detail.id)
-                  ? 'Äldre version'
-                  : 'Aktuell version'}
+                  ? 'Earlier version'
+                  : 'Current version'}
               </span>
               <span>#{String(detail.seq).padStart(3, '0')}</span>
             </div>
@@ -1233,7 +1239,7 @@ export default function Home() {
                               {String(detail.data[f.key])}
                             </a>
                           ) : (
-                            String(detail.data[f.key])
+                            fieldDisplay(detail.kind, f.key, detail.data[f.key])
                           )}
                         </dd>
                       </div>
@@ -1248,15 +1254,15 @@ export default function Home() {
                       detail.data.artifactId
                     }
                   >
-                    Ladda ner bilaga
+                    Download attachment
                   </a>
                 )}
                 <div className="detail-history">
                   <h3>
-                    <History size={17} /> Bakåtlänkar och historik
+                    <History size={17} /> Backlinks and history
                   </h3>
                   <p>
-                    Registrerande konto: <code>{detail.actor}</code>
+                    Recording account: <code>{detail.actor}</code>
                   </p>
                   {detail.supersedes && (
                     <button
@@ -1265,7 +1271,7 @@ export default function Home() {
                         openDocument(byId.get(detail.supersedes!) || null)
                       }
                     >
-                      Visa föregående version
+                      Show previous version
                     </button>
                   )}
                   {entries
@@ -1276,10 +1282,10 @@ export default function Home() {
                         className="reference"
                         onClick={() => openDocument(e)}
                       >
-                        Visa nyare version · {date(e.createdAt)}
+                        Show newer version · {date(e.createdAt)}
                       </button>
                     ))}
-                  <p>Poster som hänvisar hit:</p>
+                  <p>Records that refer here:</p>
                   {current
                     .filter((e) => references(e).includes(detail.id))
                     .map((e) => (
@@ -1302,7 +1308,7 @@ export default function Home() {
                         openDocument(null);
                       }}
                     >
-                      Skriv en ny version
+                      Write a new version
                     </Button>
                   )}
               </>
@@ -1313,9 +1319,9 @@ export default function Home() {
       <Dialog open={trustDialog} onOpenChange={setTrustDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nodnyckel</DialogTitle>
+            <DialogTitle>Node key</DialogTitle>
             <DialogDescription>
-              Registreringen är arbetsytans lokala bedömning av en nyckel.
+              This entry records the workspace’s local assessment of a key.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -1330,7 +1336,7 @@ export default function Home() {
             }}
           >
             <label htmlFor="trust-fingerprint">
-              SHA-256-fingeravtryck
+              SHA-256 fingerprint
               <Input
                 id="trust-fingerprint"
                 name="fingerprint"
@@ -1339,26 +1345,26 @@ export default function Home() {
               />
             </label>
             <label htmlFor="trust-label">
-              Avsändarens namn
+              Sender name
               <Input id="trust-label" name="label" required />
             </label>
             <label htmlFor="trust-domain">
-              Sakområde
+              Domain
               <Input id="trust-domain" name="domain" required />
             </label>
             <label htmlFor="trust-reason">
-              Skäl och kontrollmetod
+              Rationale and verification method
               <Textarea id="trust-reason" name="reason" required />
             </label>
             <label>
               Status
               <select name="status">
-                <option value="recognized">Igenkänd</option>
-                <option value="revoked">Återkallad</option>
+                <option value="recognized">Recognized</option>
+                <option value="revoked">Revoked</option>
               </select>
             </label>
             <Button className="form-save" disabled={busy}>
-              Spara bedömning
+              Save assessment
             </Button>
           </form>
         </DialogContent>

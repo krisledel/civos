@@ -36,24 +36,25 @@ export function QuickSwitcher({
     <>
       <Button
         className="quick-search"
+        aria-label="Search documents"
         variant="ghost"
         onClick={() => setOpen(true)}
       >
         <Search size={15} />
-        <span>Sök dokument…</span>
+        <span>Search documents…</span>
         <kbd>Ctrl K</kbd>
       </Button>
       <CommandDialog
         open={open}
         onOpenChange={setOpen}
-        title="Öppna dokument"
-        description="Sök på titel eller posttyp. Navigera med piltangenterna och öppna med Enter."
+        title="Open document"
+        description="Search by title or record type. Use the arrow keys to navigate and Enter to open."
       >
         <Command>
-          <CommandInput placeholder="Sök dokument eller vy…" />
+          <CommandInput placeholder="Search documents or views…" />
           <CommandList>
-            <CommandEmpty>Inga dokument hittades.</CommandEmpty>
-            <CommandGroup heading="Vyer">
+            <CommandEmpty>No documents found.</CommandEmpty>
+            <CommandGroup heading="Views">
               <CommandItem
                 onSelect={() => {
                   onGraph();
@@ -61,10 +62,10 @@ export function QuickSwitcher({
                 }}
               >
                 <Network />
-                Öppna sambandsgrafen
+                Open reference graph
               </CommandItem>
             </CommandGroup>
-            <CommandGroup heading="Dokument">
+            <CommandGroup heading="Documents">
               {entries.map((e) => (
                 <CommandItem
                   key={e.id}

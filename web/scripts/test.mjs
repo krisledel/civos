@@ -4,12 +4,14 @@ import fs from 'node:fs';
 fs.mkdirSync('work', { recursive: true });
 for (const [src, name] of [
   ['lib/model.ts', 'model'],
+  ['lib/presentation.ts', 'presentation'],
   ['lib/bundles.ts', 'bundles'],
   ['tests/integration.ts', 'integration'],
 ]) {
   const code = fs
     .readFileSync(src, 'utf8')
     .replaceAll("'../lib/model'", "'./model.mjs'")
+    .replaceAll("'../lib/presentation'", "'./presentation.mjs'")
     .replaceAll("'../lib/bundles'", "'./bundles.mjs'")
     .replaceAll("'./model'", "'./model.mjs'");
   fs.writeFileSync(

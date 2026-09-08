@@ -4,41 +4,42 @@ import { ArrowUpRight, Plus, Copy, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Picker, date, type Snapshot } from './forms';
 import { active, kinds, type Entry } from '@/lib/model';
+import { fieldDisplay, recordStatus } from '@/lib/presentation';
 
 const fields = [
   {
     id: 'evidence',
-    name: 'Underlag',
+    name: 'Evidence',
     types: ['source', 'observation'],
-    empty: 'Källor och observationer',
+    empty: 'Sources and observations',
     create: 'source',
   },
   {
     id: 'perspectives',
-    name: 'Perspektiv',
+    name: 'Perspectives',
     types: ['frame', 'concept', 'mapping'],
-    empty: 'Perspektiv, begrepp och deras relationer',
+    empty: 'Perspectives, concepts and their relations',
     create: 'frame',
   },
   {
     id: 'review',
-    name: 'Prövning',
+    name: 'Review',
     types: ['assessment', 'option', 'argument'],
-    empty: 'Bedömningar, alternativ och argument',
+    empty: 'Assessments, options and arguments',
     create: 'assessment',
   },
   {
     id: 'action',
-    name: 'Beslut & utfall',
+    name: 'Decisions & outcomes',
     types: ['decision', 'task', 'outcome'],
-    empty: 'Beslut, åtgärder och uppföljning',
+    empty: 'Decisions, actions and follow-up',
     create: 'decision',
   },
   {
     id: 'rules',
-    name: 'Arbetsregler',
+    name: 'Working rules',
     types: ['policy', 'rule_change', 'rule_resolution'],
-    empty: 'Regler och prövade ändringar',
+    empty: 'Rules and reviewed changes',
     create: 'rule_change',
   },
 ];
@@ -166,7 +167,7 @@ export function CaseWorkbench({
     <div className="case-workbench">
       <div className="case-selector-row">
         <div className="case-selector">
-          <span className="workbench-caption">ÄRENDE</span>
+          <span className="workbench-caption">CASE</span>
           {chosen ? (
             <Picker
               value={chosen.id}
@@ -175,10 +176,10 @@ export function CaseWorkbench({
                 id: entry.id,
                 label: String(entry.data.title),
               }))}
-              label="Välj ärende"
+              label="Choose case"
             />
           ) : (
-            <span>Inget ärende registrerat</span>
+            <span>No case registered</span>
           )}
         </div>
         {canCreate('case') && (
@@ -186,7 +187,7 @@ export function CaseWorkbench({
             variant="ghost"
             onClick={() => onCreate('case', chosen?.id || 'all')}
           >
-            <Plus size={15} /> Nytt ärende
+            <Plus size={15} /> New case
           </Button>
         )}
       </div>
@@ -195,7 +196,7 @@ export function CaseWorkbench({
           <div className="case-heading-label">
             <span>{String(chosen.data.domain)}</span>
             <button onClick={() => onOpen(chosen)}>
-              Ärendets uppgifter <ArrowUpRight size={14} />
+              Case details <ArrowUpRight size={14} />
             </button>
           </div>
           <h1>{String(chosen.data.title)}</h1>
@@ -211,25 +212,25 @@ export function CaseWorkbench({
       ) : (
         <header className="case-heading case-heading-empty">
           <span className="workbench-caption">{space.title}</span>
-          <h1>Vad behöver avgöras?</h1>
-          <p>Registrera frågan, sammanhanget och de berörda grupperna.</p>
+          <h1>What needs to be decided?</h1>
+          <p>Record the question, context and affected groups.</p>
           {canCreate('case') && (
             <Button
               className="primary-action"
               onClick={() => onCreate('case', 'all')}
             >
-              Skapa första ärendet <ArrowRight size={16} />
+              Create the first case <ArrowRight size={16} />
             </Button>
           )}
         </header>
       )}
       <div className="field-caption">
-        <span>Arbetsfält</span>
-        <span>Välj en post för att följa dess hänvisningar</span>
+        <span>Workbench</span>
+        <span>Select a record to follow its references</span>
       </div>
       <div
         className="field-scroll"
-        aria-label="Arbetsfält, rulla i sidled på en smal skärm"
+        aria-label="Workbench, scroll horizontally on a narrow screen"
       >
         <div className="evidence-field" style={{ height: boardHeight }}>
           <svg
@@ -297,12 +298,8 @@ export function CaseWorkbench({
                     entry.data.status) && (
                     <small>
                       {!currentIds.has(entry.id)
-                        ? 'Äldre version'
-                        : String(
-                            entry.data.verdict ||
-                              entry.data.position ||
-                              entry.data.status,
-                          )}
+                        ? 'Earlier version'
+                        : recordStatus(entry)}
                     </small>
                   )}
                 </button>
@@ -327,8 +324,8 @@ export function CaseWorkbench({
                     }
                   >
                     {expanded.includes(field.id)
-                      ? 'Visa färre'
-                      : `Visa ${field.posts.length - 4} till`}
+                      ? 'Show fewer'
+                      : `Show ${field.posts.length - 4} more`}
                   </button>
                 )}
                 {chosen && canCreate(field.create) && (
@@ -343,25 +340,25 @@ export function CaseWorkbench({
       </div>
       <section
         className="relation-index"
-        aria-label="Hänvisningar för vald post"
+        aria-label="References for the selected record"
       >
         <div className="relation-anchor">
           <span className="workbench-caption">
-            {focusEntry ? kinds[focusEntry.kind].label : 'HÄNVISNINGAR'}
+            {focusEntry ? kinds[focusEntry.kind].label : 'REFERENCES'}
           </span>
           {focusEntry ? (
             <button onClick={() => onOpen(focusEntry)}>
               {String(focusEntry.data.title)} <ArrowUpRight size={15} />
             </button>
           ) : (
-            <p>Markera en post i arbetsfälten.</p>
+            <p>Select a record in the workbench.</p>
           )}
         </div>
         {focusEntry && (
           <>
             <div>
               <h3>
-                Hänvisar till <span>{referenced.length}</span>
+                Refers to <span>{referenced.length}</span>
               </h3>
               {referenced.length ? (
                 referenced.map((link, index) => {
@@ -377,12 +374,12 @@ export function CaseWorkbench({
                   );
                 })
               ) : (
-                <p>Inga registrerade hänvisningar.</p>
+                <p>No recorded references.</p>
               )}
             </div>
             <div>
               <h3>
-                Hänvisningar hit <span>{referring.length}</span>
+                Referenced by <span>{referring.length}</span>
               </h3>
               {referring.length ? (
                 referring.map((link, index) => {
@@ -393,9 +390,9 @@ export function CaseWorkbench({
                         <span>
                           {link.label}
                           {entry.data.verdict
-                            ? ` · ${String(entry.data.verdict)}`
+                            ? ` · ${fieldDisplay(entry.kind, 'verdict', entry.data.verdict)}`
                             : entry.data.position
-                              ? ` · ${String(entry.data.position)}`
+                              ? ` · ${fieldDisplay(entry.kind, 'position', entry.data.position)}`
                               : ''}
                         </span>
                         <strong>{String(entry.data.title)}</strong>
@@ -405,7 +402,7 @@ export function CaseWorkbench({
                   );
                 })
               ) : (
-                <p>Ingen aktuell post hänvisar hit.</p>
+                <p>No current record refers here.</p>
               )}
             </div>
           </>
@@ -413,7 +410,7 @@ export function CaseWorkbench({
       </section>
       {actors.length > 0 && (
         <div className="case-actors">
-          <span>Refererade deltagare</span>
+          <span>Referenced participants</span>
           {actors.map((entry) => (
             <button key={entry.id} onClick={() => onOpen(entry)}>
               {String(entry.data.title)} <ArrowUpRight size={13} />
@@ -423,7 +420,7 @@ export function CaseWorkbench({
       )}
       <details className="workbench-review" open={findings.length > 0}>
         <summary>
-          Att pröva <span>{findings.length}</span>
+          To review <span>{findings.length}</span>
         </summary>
         {findings.length ? (
           findings.map((finding, index) => (
@@ -443,22 +440,20 @@ export function CaseWorkbench({
             </button>
           ))
         ) : (
-          <p>Inga avvikelser enligt de kontroller som körts för ärendet.</p>
+          <p>No issues found by the checks run for this case.</p>
         )}
       </details>
       <details className="workbench-history">
         <summary>
-          Arbetsytans historik{' '}
+          Workspace history{' '}
           <span>
-            {space.sequence} poster ·{' '}
-            {entries.filter((entry) => entry.supersedes).length} revisioner
+            {space.sequence} records ·{' '}
+            {entries.filter((entry) => entry.supersedes).length} revisions
           </span>
         </summary>
         <div className="history-body">
           <div>
-            <span className="workbench-caption">
-              SHA-256 / KEDJANS SLUTVÄRDE
-            </span>
+            <span className="workbench-caption">SHA-256 / CHAIN HEAD</span>
             <code>{space.head}</code>
             <Button
               variant="ghost"
@@ -472,48 +467,48 @@ export function CaseWorkbench({
               }}
             >
               <Copy size={14} />
-              {copied === space.head ? 'Kopierad' : 'Kopiera hash'}
+              {copied === space.head ? 'Copied' : 'Copy hash'}
             </Button>
             {copied === 'error' && (
-              <output>Markera och kopiera hashvärdet ovan.</output>
+              <output>Select and copy the hash above.</output>
             )}
             <p>
               {space.read_only
-                ? 'Skrivskyddad import'
+                ? 'Read-only import'
                 : space.origin
-                  ? 'Lokal fortsättning'
-                  : 'Lokal arbetsyta'}
+                  ? 'Local continuation'
+                  : 'Local workspace'}
               {space.origin &&
-                ` · ${space.read_only ? entries.length : entries.filter((entry) => entry.seq < space.local_start).length} mottagna poster · ${space.read_only ? 0 : entries.filter((entry) => entry.seq >= space.local_start).length} lokala tillägg`}
+                ` · ${space.read_only ? entries.length : entries.filter((entry) => entry.seq < space.local_start).length} received records · ${space.read_only ? 0 : entries.filter((entry) => entry.seq >= space.local_start).length} local additions`}
             </p>
             <dl className="workspace-measures">
               <div>
-                <dt>Observationer med minst en bedömning</dt>
+                <dt>Observations with at least one assessment</dt>
                 <dd>
                   {snapshot.statistics.reviewed} /{' '}
                   {snapshot.statistics.observations}
                 </dd>
               </div>
               <div>
-                <dt>Uppföljda förfallna beslut</dt>
+                <dt>Due decisions with follow-up</dt>
                 <dd>
                   {snapshot.statistics.followed} / {snapshot.statistics.due}
                 </dd>
               </div>
               <div>
-                <dt>Kända källursprung</dt>
+                <dt>Known source origins</dt>
                 <dd>{snapshot.statistics.originGroups}</dd>
               </div>
             </dl>
             <p>
-              {snapshot.statistics.sources} källor, varav{' '}
-              {snapshot.statistics.unknownOrigins} med okänt ursprung.
+              {snapshot.statistics.sources} sources, including{' '}
+              {snapshot.statistics.unknownOrigins} with unknown origin.
             </p>
             <button
               className="text-button"
               onClick={() => onNavigate('coordinate')}
             >
-              Export och överföring <ArrowUpRight size={14} />
+              Export and exchange <ArrowUpRight size={14} />
             </button>
           </div>
           <div>
