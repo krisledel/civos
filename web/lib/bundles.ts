@@ -41,9 +41,17 @@ export async function signBundle(
   payload: Bundle['payload'],
 ): Promise<Bundle> {
   const jwk = JSON.parse(privateKey) as JsonWebKey;
+  if (
+    jwk.kty !== 'OKP' ||
+    jwk.crv !== 'Ed25519' ||
+    !jwk.d ||
+    !jwk.x ||
+    (jwk.alg && !['EdDSA', 'Ed25519'].includes(jwk.alg))
+  )
+    throw new Problem('Nodnyckeln måste vara en privat Ed25519-nyckel.', 503);
   const key = await crypto.subtle.importKey(
     'jwk',
-    jwk,
+    { kty: jwk.kty, crv: jwk.crv, x: jwk.x, d: jwk.d, ext: true },
     { name: 'Ed25519' },
     false,
     ['sign'],

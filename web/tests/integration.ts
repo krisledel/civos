@@ -7,7 +7,7 @@ import {
   digest,
   type Entry,
 } from '../lib/model';
-import { verifyBundle } from '../lib/bundles';
+import { verifyBundle, signBundle } from '../lib/bundles';
 const base = process.env.CIVOS_TEST_URL || 'http://localhost:3000';
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))
   throw Error('Integration tests require a local server.');
@@ -486,6 +486,36 @@ await post(
 ok(
   (await state(sid)).entries.length === emptyBefore,
   'Rejected writes cannot alter history',
+);
+const pair = (await crypto.subtle.generateKey('Ed25519', true, [
+  'sign',
+  'verify',
+])) as CryptoKeyPair;
+const testKey = await crypto.subtle.exportKey('jwk', pair.privateKey);
+for (const alg of ['EdDSA', 'Ed25519']) {
+  testKey.alg = alg;
+  await verifyBundle(
+    canonical(
+      await signBundle(JSON.stringify(testKey), {
+        node: 'test',
+        workspace: 'test',
+        title: 'Key compatibility',
+        exportedAt: now(),
+        head: '0'.repeat(64),
+        records: [],
+        lineage: null,
+      }),
+    ),
+  );
+  checks++;
+}
+const originalAgain = await fetch(
+  base + '/api/civos?space=' + imported.id + '&export=1',
+  { headers },
+);
+ok(
+  (await originalAgain.text()) === original,
+  'Forwarding an import must preserve the original envelope',
 );
 console.log(
   JSON.stringify(

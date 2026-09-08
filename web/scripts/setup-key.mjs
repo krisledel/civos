@@ -9,6 +9,7 @@ const pair = await webcrypto.subtle.generateKey('Ed25519', true, [
   'verify',
 ]);
 const jwk = await webcrypto.subtle.exportKey('jwk', pair.privateKey);
+delete jwk.alg;
 fs.writeFileSync(
   '.dev.vars',
   "CIVOS_SIGNING_KEY='" + JSON.stringify(jwk) + "'\n",
