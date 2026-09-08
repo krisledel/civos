@@ -1,4 +1,5 @@
 import copy
+from contextlib import closing
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -97,7 +98,7 @@ class CliReportTests(unittest.TestCase):
         self.run_cli("verify", good=False)
         self.assertFalse(self.db.exists())
         self.run_cli("demo")
-        with sqlite3.connect(self.db) as database:
+        with closing(sqlite3.connect(self.db)) as database, database:
             database.execute("UPDATE events SET hash = ? WHERE seq = 1", ("f" * 64,))
         self.run_cli("verify", good=False)
         self.run_cli("report", "--output", self.directory / "corrupt.html", good=False)

@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from pathlib import Path
 from threading import Barrier
 from unittest.mock import Mock
@@ -27,7 +28,7 @@ class LedgerTests(unittest.TestCase):
         self.directory.cleanup()
 
     def alter(self, sql, values=()):
-        with sqlite3.connect(self.path) as connection:
+        with closing(sqlite3.connect(self.path)) as connection, connection:
             connection.execute(sql, values)
 
     def test_empty_append_reopen_export_and_hash_recipe(self):
@@ -63,7 +64,7 @@ class LedgerTests(unittest.TestCase):
                           lambda: Ledger(self.path)]:
             with self.assertRaises(IntegrityError):
                 operation()
-        with sqlite3.connect(self.path) as connection:
+        with closing(sqlite3.connect(self.path)) as connection:
             self.assertEqual(connection.execute("SELECT count(*) FROM events").fetchone()[0], 2)
 
     def test_database_failure_rolls_back_already_inserted_batch_rows(self):
@@ -84,7 +85,7 @@ class LedgerTests(unittest.TestCase):
 
     def test_unrelated_database_is_rejected_without_mutation(self):
         other = Path(self.directory.name) / "other.sqlite3"
-        with sqlite3.connect(other) as connection:
+        with closing(sqlite3.connect(other)) as connection, connection:
             connection.execute("CREATE TABLE other_application_data(name TEXT)")
             connection.execute("INSERT INTO other_application_data VALUES ('untouched')")
         original = other.read_bytes()
@@ -101,7 +102,7 @@ class LedgerTests(unittest.TestCase):
             target = Path(self.directory.name) / name
             target.touch()
             if name == "empty.sqlite3":
-                with sqlite3.connect(target) as connection:
+                with closing(sqlite3.connect(target)) as connection:
                     connection.execute("VACUUM")
             before = target.read_bytes()
             with self.assertRaises(IntegrityError):
